@@ -1,0 +1,32 @@
+#### timestring "2006-01-02 15:04:05"
+#### adjust 
+targets: 
+  - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
+    subject: "log-detect test01"
+    indices:  
+    - index: logstash-log_detect*
+      logname: waf
+      period: minutes
+      unit: 60
+      field: host.keyword
+    - index: logstash-log_detect-*
+      logname: waf1
+      period: minutes
+      unit: 60
+      field: host.keyword
+  - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
+    subject: "log-detect test02"
+    indices:  
+    - index: logstash-log_detect*
+      logname: forti
+      period: minutes
+      unit: 60
+      field: host.keyword
+  - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
+    subject: "log-detect test03"
+    indices:  
+    - index: logstash-log_detect*
+      logname: asa
+      period: minutes
+      unit: 60
+      field: host.keyword

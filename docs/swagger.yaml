@@ -1,0 +1,593 @@
+basePath: /api/v1
+definitions:
+  entities.Device:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      device_group:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  entities.Index:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      device_group:
+        type: string
+      enable:
+        type: boolean
+      field:
+        type: string
+      id:
+        type: integer
+      logname:
+        type: string
+      pattern:
+        type: string
+      period:
+        type: string
+      targets:
+        description: TargetID    int    `gorm:"index" json:"target_id" form:"target_id"`
+        items:
+          $ref: '#/definitions/entities.Target'
+        type: array
+      unit:
+        type: integer
+      updated_at:
+        type: integer
+    type: object
+  entities.MainMenu:
+    properties:
+      icon:
+        type: string
+      id:
+        type: integer
+      module:
+        type: string
+      router_path:
+        type: string
+      sort:
+        type: integer
+      title:
+        type: string
+    type: object
+  entities.Module:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      disabled:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: integer
+      url:
+        type: string
+    type: object
+  entities.Receiver:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      id:
+        type: integer
+      name:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  entities.Target:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      enable:
+        type: boolean
+      id:
+        type: integer
+      indices:
+        description: Indices []Index `gorm:"foreignKey:TargetID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT;"`
+        items:
+          $ref: '#/definitions/entities.Index'
+        type: array
+      subject:
+        type: string
+      to:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  models.Response:
+    properties:
+      body: {}
+      msg:
+        type: string
+      success:
+        type: boolean
+    type: object
+host: localhost:8006
+info:
+  contact:
+    email: support@swagger.io
+    name: Russell
+  description: Golang API 專案描述
+  termsOfService: http://swagger.io/terms/
+  title: Log Detect Golang API
+  version: "1.0"
+paths:
+  /Device/Create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: device
+        in: body
+        name: Device
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/entities.Device'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create Device
+      tags:
+      - Device
+  /Device/Delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Delete Device
+      tags:
+      - Device
+  /Device/GetAll:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get Device
+      tags:
+      - Device
+  /Device/GetGroup:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get Group
+      tags:
+      - Device
+  /Device/count:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Count Device
+      tags:
+      - Device
+  /History/GetData/{logname}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Logname
+        in: path
+        name: logname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get History Data
+      tags:
+      - History
+  /History/GetLognameData:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get Get Logname in History
+      tags:
+      - History
+  /Indices/Create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: device
+        in: body
+        name: Indices
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Index'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create Indices
+      tags:
+      - Indices
+  /Indices/Delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Delete Indices
+      tags:
+      - Indices
+  /Indices/GetAll:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get Indices
+      tags:
+      - Indices
+  /Indices/GetIndicesByLogname/{logname}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Logname
+        in: path
+        name: logname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get Indices Data
+      tags:
+      - Indices
+  /Indices/GetIndicesByTargetID/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: target id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.Index'
+      summary: Get Indices by Target ID
+      tags:
+      - Indices
+  /Indices/GetLogname:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get Logname
+      tags:
+      - Indices
+  /Indices/Update:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: device
+        in: body
+        name: Indices
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Index'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Update Indices
+      tags:
+      - Indices
+  /Receiver/Create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: receiver
+        in: body
+        name: Receiver
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Receiver'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create Receiver
+      tags:
+      - Receiver
+  /Receiver/Delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Delete Receiver
+      tags:
+      - Receiver
+  /Receiver/GetAll:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get Receiver
+      tags:
+      - Receiver
+  /Receiver/Update:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: receiver
+        in: body
+        name: Instacne
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Receiver'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Update Receiver
+      tags:
+      - Receiver
+  /Target/Create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: target
+        in: body
+        name: Target
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Target'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create Target
+      tags:
+      - Target
+  /Target/Delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Delete Target
+      tags:
+      - Target
+  /Target/GetAll:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get Target
+      tags:
+      - Target
+  /Target/Update:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: target
+        in: body
+        name: Target
+        required: true
+        schema:
+          $ref: '#/definitions/entities.Target'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Update Target
+      tags:
+      - Target
+  /get-server-module:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entities.Module'
+            type: array
+      summary: Get Server Module
+      tags:
+      - Env
+  /get-sso-url:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get SSO URL
+      tags:
+      - Env
+  /user/get-server-menu:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entities.MainMenu'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get Log-detect Menu
+      tags:
+      - Env
+schemes:
+- http
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,56 @@
+database:
+  client: "mysql"
+  max_idle: 10
+  max_life_time: "1h"
+  max_open_conn: 100
+  user: "runner"
+  password: "1qaz2wsx"
+  host: "10.99.1.133"
+  name: "logdetect"
+  port: "3306"
+  params: "charset=utf8mb4&parseTime=True&loc=Asia%2fTaipei"
+  log_enable: 0
+  migration: "true"
+
+cors:
+  allow:
+    headers: "Content-type Access-Control-Allow-Origin Authorization Refresh-token"
+  default_allow_url: "http://localhost:8006"
+
+server: 
+  mode: debug
+  port: :8006
+
+es:
+  url: https://10.99.1.93:9200
+  sourceAccount: "elastic"
+  sourcePassword: "12345678"
+  # url: https://10.99.1.64:9200
+  # sourceAccount: "elastic"
+  # sourcePassword: "a12345678"
+
+path:
+  log_record: "/Users/chen/Downloads/01BiMap/程式區/log-detect-golang版/log-detect-ver01/log_record"
+
+
+email:
+  user: "rabot6201@gmail.com"
+  password: "fuhbrbezkwpcuzsv"
+  sender: "rabot6201@gmail.com"
+  host: "smtp.gmail.com"
+  port: "587"
+  smtp: ["smtp.gmail.com:587"]
+
+sso:
+  url: "https://10.99.1.133:8443"
+  realm: "master"
+  username: "admin"
+  password: "1qaz2wsx"
+  client_id: "log-detect"
+  admin_role: "log-detect-admin"
+  user_role: "log-detect-op"
+  default_setting:
+    username: "bimap"
+    password: "bimap"
+    role: "log_detect-admin"
+    group: "bimap-log_detect"
