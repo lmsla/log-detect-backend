@@ -1,0 +1,2 @@
+# 忽略 macOS 的 Finder 設定檔案
+.DS_Store
