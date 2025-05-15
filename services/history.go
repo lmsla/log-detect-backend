@@ -122,7 +122,8 @@ func DataDealing(logname string) models.Response {
 	for _, device := range device_list {
 		history_data := GetHistoryDataByDeviceName(logname, device.Name)
 		var history_tmp_data []entities.HistoryData
-
+		// fmt.Println("device.Name",device.Name)
+		// fmt.Println(history_data)
 		// 將歷史資料轉換為 map 方便查找
 		historyMap := make(map[string]bool)
 
@@ -135,7 +136,8 @@ func DataDealing(logname string) models.Response {
 		for _, timePoint := range timeArray {
 			// 如果時間點不在歷史資料中，則添加新的记录
 			if _, ok := historyMap[timePoint]; !ok {
-				history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: "false"})
+				// history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: "false"})
+				history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: "none"})
 			}
 		}
 		// 扁平化 Array 將 history_tmp_data 中的每個元件塞入 history_final_data 中
@@ -143,7 +145,7 @@ func DataDealing(logname string) models.Response {
 		// fmt.Println(history_tmp_data)
 		// fmt.Println(len(history_tmp_data))
 	}
-	// fmt.Println(history_final_data)
+	fmt.Println(history_final_data)
 	// fmt.Println(len(history_final_data))
 	res.Body = history_final_data
 	res.Success = true
@@ -169,16 +171,16 @@ func CheckLogstatus(logname string) entities.LognameCheck {
 
 	date := now.Format("2006-01-02")
 	
-	// fmt.Println("lastCrontabTime",lastCrontabTime)
+	fmt.Println("lastCrontabTime",lastCrontabTime)
 	err := global.Mysql.Debug().Where("logname = ? AND date=? AND time =?", logname ,date,lastCrontabTime).Find(&histories).Error
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find histoey data error: %s", index_err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find history data error: %s", index_err.Error()))
 	}
 
 	if len(histories) == 0 {
-		logcheck = entities.LognameCheck{Name: logname, Lost: "false"}
-	} else {
 		logcheck = entities.LognameCheck{Name: logname, Lost: "true"}
+	} else {
+		logcheck = entities.LognameCheck{Name: logname, Lost: "false"}
 	}
 	return logcheck
 }

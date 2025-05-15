@@ -23,7 +23,6 @@ func Mail4(receiver, cc, bcc []string, subject string, logname string, removed [
 
 	// body := fmt.Sprintf("%s 日誌，失聯主機:%s", logname, removed)
 
-
 	// 將 removed 數組轉換為 HTML 表格
 	tableRows := ""
 	for i, item := range removed {
@@ -63,7 +62,6 @@ func Mail4(receiver, cc, bcc []string, subject string, logname string, removed [
 			%s
 		</body>
 		</html>`, subject, logname, table)
-
 
 	// r := NewRequest(receiver, cc, bcc, subject, body)
 
@@ -328,7 +326,11 @@ func (mail *SendMail) Auth() {
 }
 
 func (mail SendMail) Send(message Message) error {
-	mail.Auth()
+
+	toAddress := MergeSlice(message.to, message.cc)
+	toAddress = MergeSlice(toAddress, message.bcc)
+
+	// mail.Auth()
 	buffer := bytes.NewBuffer(nil)
 	boundary := "GoBoundary"
 	Header := make(map[string]string)
@@ -346,6 +348,7 @@ func (mail SendMail) Send(message Message) error {
 	body += "Content-Type:" + message.contentType + "\r\n"
 	body += "\r\n" + message.body + "\r\n"
 	buffer.WriteString(body)
+	buffer.WriteString("\r\n--" + boundary + "--")
 	// for _, name := range message.attachment.name {
 	// 	if message.attachment.withFile {
 	// 		attachment := "\r\n--" + boundary + "\r\n"
@@ -362,13 +365,63 @@ func (mail SendMail) Send(message Message) error {
 	// 		mail.writeFile(buffer, global.EnvConfig.Files.ReportFile+"/"+name+".pdf")
 	// 	}
 	// }
+	// 決定發信方式
+	addr := fmt.Sprintf("%s:%s", mail.host, mail.port)
+	from := message.from
+	msg := buffer.Bytes()
+	switch {
+	case global.EnvConfig.Email.Auth:
+		var auth smtp.Auth
+		if global.EnvConfig.Email.AuthType == "LoginAuth" {
+			auth = LoginAuth(mail.user, mail.password)
+		} else {
+			auth = smtp.PlainAuth("", mail.user, mail.password, mail.host)
+		}
+		if err := smtp.SendMail(addr, auth, from, toAddress, msg); err != nil {
+			return fmt.Errorf("SendMail with Auth failed: %w", err)
+		}
+		return nil
 
-	to_address := MergeSlice(message.to, message.cc)
-	to_address = MergeSlice(to_address, message.bcc)
+	case !global.EnvConfig.Email.DisableTLS:
+		if err := smtp.SendMail(addr, nil, from, toAddress, msg); err != nil {
+			return fmt.Errorf("SendMail with TLS but no Auth failed: %w", err)
+		}
+		return nil
 
-	buffer.WriteString("\r\n--" + boundary + "--")
-	err := smtp.SendMail(mail.host+":"+mail.port, mail.auth, message.from, to_address, buffer.Bytes())
-	return err
+	case global.EnvConfig.Email.DisableTLS:
+		// 模擬 NoAuth + NoTLS
+		c, err := smtp.Dial(addr)
+		if err != nil {
+			return fmt.Errorf("dial failed: %w", err)
+		}
+		defer c.Quit()
+
+		if err = c.Mail(from); err != nil {
+			return fmt.Errorf("MAIL FROM failed: %w", err)
+		}
+		for _, rcpt := range toAddress {
+			if err = c.Rcpt(rcpt); err != nil {
+				return fmt.Errorf("RCPT TO failed (%s): %w", rcpt, err)
+			}
+		}
+
+		wc, err := c.Data()
+		if err != nil {
+			return fmt.Errorf("DATA failed: %w", err)
+		}
+		defer wc.Close()
+
+		if _, err = wc.Write(msg); err != nil {
+			return fmt.Errorf("write message failed: %w", err)
+		}
+		return nil
+
+	default:
+		return errors.New("no valid SMTP auth/TLS configuration found")
+	}
+
+	// err := smtp.SendMail(mail.host+":"+mail.port, mail.auth, message.from, to_address, buffer.Bytes())
+	// return err
 }
 
 func MergeSlice(s1 []string, s2 []string) []string {

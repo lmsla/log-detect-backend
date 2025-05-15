@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log-detect/clients"
 	"log-detect/global"
 	"log-detect/router"
 	"log-detect/services"
 	"log-detect/utils"
-	"time"
-	"log-detect/log"
 )
 
 // @title Log Detect Golang API
@@ -45,40 +42,4 @@ func main() {
 	// services.CreateTable()
 	
 
-}
-
-func main1() {
-
-	utils.LoadEnvironment()
-
-	clients.LoadDatabase()
-	mysql, _ := global.Mysql.DB()
-	defer mysql.Close()
-
-	clients.SetElkClient()
-
-	log.Logrecord_no_rotate("dfds","test")
-
-	// services.GetDeviceGroup()
-	// services.GetDevicesDataByGroupName("vip")
-	// services.GetServerMenu()
-	// services.Control_center()
-
-	date := time.Now().Format("2006-01-02")
-	time1 := time.Now().Format("15:04")
-	fmt.Println("date", date)
-	fmt.Println("time", time1)
-	// services.GetLogname()
-	// services.GenerateTimeArray("minutes",3)
-	// services.DataDealing("some-fire-log")
-
-	now1 := time.Now()
-	// 根據 period 和 unit 計算上一次 crontab 的執行時間
-	lastCrontabTime := services.GetLastCrontabTime(now1,"hours", 5)
-
-	fmt.Println("Last crontab time:", lastCrontabTime)
-
-	// services.GetLognameData()
-
-	
 }

@@ -34,7 +34,6 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 		// fmt.Println("doc_count", result.Aggregations.Num2.Buckets[i].DocCount)
 		result_list = append(result_list, result.Aggregations.Num2.Buckets[i].Key)
 	}
-	// fmt.Println("result.Aggregations.Num2.Buckets len",len(result.Aggregations.Num2.Buckets))
 
 	fmt.Println("執行時間:", timenow)
 	fmt.Println("檢查起始時間:", time3_str)

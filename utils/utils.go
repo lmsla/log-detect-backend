@@ -50,7 +50,7 @@ func loadSettingFile() {
 			viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		} else {
 			// 有找到 config.yml 但是發生了其他未知的錯誤
-			panic(fmt.Errorf("Fatal error config file: %s \n", err))
+			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
 	}
 }
@@ -109,6 +109,9 @@ func viperSettingToModel() {
 	config.Email.Host = viper.GetString("email.host")
 	config.Email.Port = viper.GetString("email.port")
 	config.Email.SMTP = viper.GetStringSlice("email.smtp")
+	config.Email.AuthType = viper.GetString("email.auth_type")
+	config.Email.DisableTLS = viper.GetBool("email.disable_tls")
+	config.Email.Auth = viper.GetBool("email.auth")
 
 	global.EnvConfig = &config
 	// global.Action = &action
