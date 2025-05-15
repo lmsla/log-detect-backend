@@ -36,6 +36,8 @@ type email struct {
 	Sender   string
 	Auth     bool
 	SMTP     []string
+	AuthType string
+	DisableTLS bool
 }
 
 type path struct {

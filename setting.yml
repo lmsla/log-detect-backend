@@ -40,6 +40,9 @@ email:
   host: "smtp.gmail.com"
   port: "587"
   smtp: ["smtp.gmail.com:587"]
+  auth_type: "LoginAuth"
+  disable_tls: "false"
+  auth: true
 
 sso:
   url: "https://10.99.1.133:8443"
