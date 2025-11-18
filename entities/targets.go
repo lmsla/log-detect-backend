@@ -40,6 +40,10 @@ type Index struct {
 	Period      string   `gorm:"type:varchar(50)" json:"period" form:"period"`
 	Unit        int      `type:"int" json:"unit" form:"unit"`
 	Field       string   `gorm:"type:varchar(50)" json:"field" form:"field"`
+
+	// ES 連線配置（關聯到 es_connections 表）
+	ESConnectionID *int          `gorm:"index" json:"es_connection_id" form:"es_connection_id"`
+	ESConnection   *ESConnection `gorm:"foreignKey:ESConnectionID" json:"es_connection,omitempty"`
 }
 
 type Device struct {
