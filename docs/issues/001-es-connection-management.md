@@ -285,7 +285,7 @@ elasticsearch_monitors:
 ### Phase 3：API 與前端（1.5天）✅ 已完成
 **目標**: 提供 Web UI 管理 ES 連線
 **完成日期**: 2025-11-18
-**Commit**: 待提交 - feat: Phase 3 - ES 連線管理 API 層實作
+**Commit**: `55a9947` - feat: Phase 3 - ES 連線管理 API 層完整實作
 
 #### API 層
 - [x] 建立 `services/es_connection_service.go`
