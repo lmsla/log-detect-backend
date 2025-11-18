@@ -135,6 +135,22 @@ func LoadRouter() *gin.Engine {
 		}
 	}
 
+	// Protected ES Connection routes
+	esConnectionGroup := apiv1.Group("/ESConnection")
+	esConnectionGroup.Use(middleware.AuthMiddleware())
+	esConnectionGroup.Use(middleware.PermissionMiddleware("indices", "read"))
+	{
+		esConnectionGroup.GET("/GetAll", controller.GetAllESConnections)
+		esConnectionGroup.GET("/Get/:id", controller.GetESConnection)
+		esConnectionGroup.POST("/Create", controller.CreateESConnection).Use(middleware.PermissionMiddleware("indices", "create"))
+		esConnectionGroup.PUT("/Update", controller.UpdateESConnection).Use(middleware.PermissionMiddleware("indices", "update"))
+		esConnectionGroup.DELETE("/Delete/:id", controller.DeleteESConnection).Use(middleware.PermissionMiddleware("indices", "delete"))
+		esConnectionGroup.POST("/Test", controller.TestESConnection)
+		esConnectionGroup.PUT("/SetDefault/:id", controller.SetDefaultESConnection).Use(middleware.PermissionMiddleware("indices", "update"))
+		esConnectionGroup.PUT("/Reload/:id", controller.ReloadESConnection).Use(middleware.PermissionMiddleware("indices", "update"))
+		esConnectionGroup.PUT("/ReloadAll", controller.ReloadAllESConnections).Use(middleware.PermissionMiddleware("indices", "update"))
+	}
+
 	// Protected Elasticsearch Monitor routes
 	esGroup := apiv1.Group("/elasticsearch")
 	esGroup.Use(middleware.AuthMiddleware())
