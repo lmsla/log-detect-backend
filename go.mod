@@ -1,9 +1,12 @@
 module log-detect
 
-go 1.18
+go 1.24.0
+
+toolchain go1.24.7
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.12.0
+	github.com/lib/pq v1.10.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/gin-swagger v1.6.0
@@ -12,6 +15,8 @@ require (
 )
 
 require github.com/robfig/cron/v3 v3.0.1
+
+require github.com/golang-jwt/jwt/v5 v5.3.0
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -23,7 +28,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/swaggo/swag v1.16.3
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 )
 
 require (
@@ -71,11 +76,11 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.5.0 // indirect
-	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/crypto v0.42.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

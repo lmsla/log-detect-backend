@@ -1,0 +1,2608 @@
+openapi: 3.0.3
+info:
+  title: Log Detect API
+  description: Golang API for Log Detection System with JWT Authentication
+  version: 1.0.0
+  contact:
+    name: Russell Chen
+    email: support@swagger.io
+
+servers:
+  - url: http://localhost:8006
+    description: Development server
+  - url: https://10.99.1.133:8006
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Authentication endpoints (public)
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User Login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Protected authentication endpoints
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register User
+      description: Create a new user account (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get Current User Profile
+      description: Get current authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh Token
+      description: Refresh JWT token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/users:
+    get:
+      tags:
+        - User Management
+      summary: List Users
+      description: Get all users (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Users retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/users/{id}:
+    get:
+      tags:
+        - User Management
+      summary: Get User by ID
+      description: Get user by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - User Management
+      summary: Update User
+      description: Update user information
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - User Management
+      summary: Delete User
+      description: Delete user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Device Management endpoints
+  /api/v1/Device/GetAll:
+    get:
+      tags:
+        - Device Management
+      summary: Get All Devices
+      description: Retrieve all devices
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Devices retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Device/Create:
+    post:
+      tags:
+        - Device Management
+      summary: Create Device
+      description: Create a new device
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Device created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Device/Update:
+    put:
+      tags:
+        - Device Management
+      summary: Update Device
+      description: Update device information
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Device updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Device/Delete/{id}:
+    delete:
+      tags:
+        - Device Management
+      summary: Delete Device
+      description: Delete a device by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Device ID
+      responses:
+        '200':
+          description: Device deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Device/count:
+    get:
+      tags:
+        - Device Management
+      summary: Get Device Counts
+      description: Get device count by group
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Device counts retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceCount'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Device/GetGroup:
+    get:
+      tags:
+        - Device Management
+      summary: Get Device Groups
+      description: Get all device groups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Device groups retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceGroup'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Target Management endpoints
+  /api/v1/Target/GetAll:
+    get:
+      tags:
+        - Target Management
+      summary: Get All Targets
+      description: Retrieve all targets
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Targets retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Target'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Target/Create:
+    post:
+      tags:
+        - Target Management
+      summary: Create Target
+      description: Create a new target
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Target'
+      responses:
+        '200':
+          description: Target created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Target'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Target/Update:
+    put:
+      tags:
+        - Target Management
+      summary: Update Target
+      description: Update target information
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Target'
+      responses:
+        '200':
+          description: Target updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Target'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Target/Delete/{id}:
+    delete:
+      tags:
+        - Target Management
+      summary: Delete Target
+      description: Delete a target by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Target ID
+      responses:
+        '200':
+          description: Target deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Indices Management endpoints
+  /api/v1/Indices/GetAll:
+    get:
+      tags:
+        - Indices Management
+      summary: Get All Indices
+      description: Retrieve all indices
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Indices retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Index'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/Create:
+    post:
+      tags:
+        - Indices Management
+      summary: Create Index
+      description: Create a new index
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Index'
+      responses:
+        '200':
+          description: Index created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Index'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/Update:
+    put:
+      tags:
+        - Indices Management
+      summary: Update Index
+      description: Update index information
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Index'
+      responses:
+        '200':
+          description: Index updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Index'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/Delete/{id}:
+    delete:
+      tags:
+        - Indices Management
+      summary: Delete Index
+      description: Delete an index by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index ID
+      responses:
+        '200':
+          description: Index deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/GetIndicesByLogname/{logname}:
+    get:
+      tags:
+        - Indices Management
+      summary: Get Indices by Logname
+      description: Get indices by logname
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: logname
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Log name
+      responses:
+        '200':
+          description: Indices retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Index'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/GetIndicesByTargetID/{id}:
+    get:
+      tags:
+        - Indices Management
+      summary: Get Indices by Target ID
+      description: Get indices by target ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Target ID
+      responses:
+        '200':
+          description: Indices retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Index'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Indices/GetLogname:
+    get:
+      tags:
+        - Indices Management
+      summary: Get Log Names
+      description: Get all log names
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Log names retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogName'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # History endpoints
+  /api/v1/History/GetData/{logname}:
+    get:
+      tags:
+        - History
+      summary: Get History Data
+      description: Get history data by logname
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: logname
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Log name
+      responses:
+        '200':
+          description: History data retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/History/GetLognameData:
+    get:
+      tags:
+        - History
+      summary: Get Log Name Data
+      description: Get log name data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Log name data retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogNameData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Receiver endpoints
+  /api/v1/Receiver/GetAll:
+    get:
+      tags:
+        - Receiver Management
+      summary: Get All Receivers
+      description: Retrieve all receivers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Receivers retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Receiver'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Receiver/Create:
+    post:
+      tags:
+        - Receiver Management
+      summary: Create Receiver
+      description: Create a new receiver
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Receiver'
+      responses:
+        '200':
+          description: Receiver created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receiver'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Receiver/Update:
+    put:
+      tags:
+        - Receiver Management
+      summary: Update Receiver
+      description: Update receiver information
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Receiver'
+      responses:
+        '200':
+          description: Receiver updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receiver'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/Receiver/Delete/{id}:
+    delete:
+      tags:
+        - Receiver Management
+      summary: Delete Receiver
+      description: Delete a receiver by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Receiver ID
+      responses:
+        '200':
+          description: Receiver deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Elasticsearch Monitor Management
+  /api/v1/elasticsearch/monitors:
+    get:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Get All ES Monitors
+      description: Retrieve all Elasticsearch monitoring configurations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ES monitors retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢監控配置成功"
+                  body:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ElasticsearchMonitor'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Create ES Monitor
+      description: Create a new Elasticsearch monitoring configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElasticsearchMonitor'
+      responses:
+        '200':
+          description: ES monitor created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "創建監控配置成功"
+                  body:
+                    $ref: '#/components/schemas/ElasticsearchMonitor'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Update ES Monitor
+      description: Update an existing Elasticsearch monitoring configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElasticsearchMonitor'
+      responses:
+        '200':
+          description: ES monitor updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "更新監控配置成功"
+                  body:
+                    $ref: '#/components/schemas/ElasticsearchMonitor'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/monitors/{id}:
+    get:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Get ES Monitor by ID
+      description: Retrieve a specific Elasticsearch monitoring configuration by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Monitor ID
+      responses:
+        '200':
+          description: ES monitor retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢監控配置成功"
+                  body:
+                    $ref: '#/components/schemas/ElasticsearchMonitor'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Delete ES Monitor
+      description: Delete an Elasticsearch monitoring configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Monitor ID
+      responses:
+        '200':
+          description: ES monitor deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/monitors/{id}/test:
+    post:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Test ES Connection
+      description: Test connection to an existing Elasticsearch monitor configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Monitor ID
+      responses:
+        '200':
+          description: Connection test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "連接成功"
+                  body:
+                    type: object
+                    properties:
+                      cluster_name:
+                        type: string
+                        example: "production-es"
+                      cluster_status:
+                        type: string
+                        example: "green"
+                      status:
+                        type: string
+                        example: "online"
+                      response_time:
+                        type: integer
+                        example: 45
+        '400':
+          description: Connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Monitor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/monitors/{id}/toggle:
+    post:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Toggle ES Monitor
+      description: Enable or disable an Elasticsearch monitoring configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Monitor ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enable:
+                  type: boolean
+                  example: true
+              required:
+                - enable
+      responses:
+        '200':
+          description: Monitor toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/status:
+    get:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Get All ES Monitors Status
+      description: Retrieve current status of all Elasticsearch monitors
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢成功"
+                  body:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ESMonitorStatus'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/status/{id}/history:
+    get:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Get ES Monitor History
+      description: Retrieve historical metrics for a specific Elasticsearch monitor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Monitor ID
+        - name: hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 720
+          description: Hours to query (default 24, max 720)
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['1 minute', '5 minutes', '10 minutes', '1 hour']
+          description: Time bucket interval (auto-selected if not specified)
+      responses:
+        '200':
+          description: History retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢成功"
+                  body:
+                    type: object
+                    properties:
+                      monitor_id:
+                        type: integer
+                        example: 1
+                      start_time:
+                        type: string
+                        format: date-time
+                        example: "2024-01-01T00:00:00Z"
+                      end_time:
+                        type: string
+                        format: date-time
+                        example: "2024-01-02T00:00:00Z"
+                      interval:
+                        type: string
+                        example: "5 minutes"
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ESMetricTimeSeries'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/statistics:
+    get:
+      tags:
+        - Elasticsearch Monitoring
+      summary: Get ES Statistics
+      description: Retrieve overall Elasticsearch monitoring statistics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢成功"
+                  body:
+                    $ref: '#/components/schemas/ESStatistics'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Alert Management endpoints
+  /api/v1/elasticsearch/alerts:
+    get:
+      tags:
+        - Elasticsearch Alerts
+      summary: Get ES Alerts
+      description: Retrieve Elasticsearch monitoring alerts with filtering and pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: monitor_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by monitor ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [active, resolved]
+          style: form
+          explode: true
+          description: Filter by alert status (can specify multiple)
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [critical, high, medium, low]
+          style: form
+          explode: true
+          description: Filter by severity level (can specify multiple)
+        - name: alert_type
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [health, performance, capacity, availability]
+          style: form
+          explode: true
+          description: Filter by alert type (can specify multiple)
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start time for time range filter (ISO 8601)
+          example: "2024-01-01T00:00:00Z"
+        - name: end
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End time for time range filter (ISO 8601)
+          example: "2024-01-02T00:00:00Z"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Page number for pagination
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: Number of items per page
+      responses:
+        '200':
+          description: Alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢成功"
+                  body:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of alerts matching filters
+                        example: 150
+                      page:
+                        type: integer
+                        description: Current page number
+                        example: 1
+                      page_size:
+                        type: integer
+                        description: Number of items per page
+                        example: 20
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ESAlert'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/alerts/{id}:
+    get:
+      tags:
+        - Elasticsearch Alerts
+      summary: Get ES Alert by ID
+      description: Retrieve detailed information for a specific alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Alert ID
+      responses:
+        '200':
+          description: Alert retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "查詢成功"
+                  body:
+                    $ref: '#/components/schemas/ESAlert'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/alerts/{id}/resolve:
+    post:
+      tags:
+        - Elasticsearch Alerts
+      summary: Resolve ES Alert
+      description: Mark an alert as resolved with optional resolution note
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Alert ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolution_note:
+                  type: string
+                  description: Optional note about the resolution
+                  example: "Issue fixed by restarting service"
+      responses:
+        '200':
+          description: Alert resolved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "告警已解決"
+                  body:
+                    $ref: '#/components/schemas/ESAlert'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/elasticsearch/alerts/{id}/acknowledge:
+    put:
+      tags:
+        - Elasticsearch Alerts
+      summary: Acknowledge ES Alert
+      description: Acknowledge an alert to indicate it has been seen and is being handled
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Alert ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                acknowledged_by:
+                  type: string
+                  description: Name or ID of the person acknowledging
+                  example: "admin@example.com"
+                note:
+                  type: string
+                  description: Optional acknowledgement note
+                  example: "Investigating the issue"
+      responses:
+        '200':
+          description: Alert acknowledged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: "告警已確認"
+                  body:
+                    $ref: '#/components/schemas/ESAlert'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Health check (public)
+  /healthcheck:
+    get:
+      tags:
+        - System
+      summary: Health Check
+      description: Check if the service is running
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  message:
+                    type: string
+                    example: "Log Detect API is running"
+
+  # Swagger UI (excluded from OpenAPI client generation due to wildcard path)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        JWT Authorization header using the Bearer scheme.
+        Example: "Authorization: Bearer {token}"
+
+  schemas:
+    # Error and Success responses
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+      required:
+        - message
+
+    # Common fields
+    CommonFields:
+      type: object
+      properties:
+        created_at:
+          type: integer
+          description: Creation timestamp
+        updated_at:
+          type: integer
+          description: Last update timestamp
+        deleted_at:
+          type: integer
+          description: Deletion timestamp (soft delete)
+      required:
+        - created_at
+        - updated_at
+
+    # Authentication schemas
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: User username
+          example: "admin"
+        password:
+          type: string
+          description: User password
+          example: "admin123"
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+
+    # User management schemas
+    User:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: User ID
+              example: 1
+            username:
+              type: string
+              description: Unique username
+              example: "admin"
+            email:
+              type: string
+              description: User email address
+              example: "admin@logdetect.com"
+            role:
+              $ref: '#/components/schemas/Role'
+            role_id:
+              type: integer
+              description: Role ID
+              example: 1
+            is_active:
+              type: boolean
+              description: Whether user is active
+              example: true
+          required:
+            - id
+            - username
+            - email
+            - role_id
+            - is_active
+
+    Role:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Role ID
+              example: 1
+            name:
+              type: string
+              description: Role name
+              example: "admin"
+            description:
+              type: string
+              description: Role description
+              example: "Administrator with full access"
+            permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Permission'
+          required:
+            - id
+            - name
+
+    Permission:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Permission ID
+              example: 1
+            name:
+              type: string
+              description: Permission name (resource:action format)
+              example: "device:create"
+            resource:
+              type: string
+              description: Resource name
+              example: "device"
+            action:
+              type: string
+              description: Action name
+              example: "create"
+            description:
+              type: string
+              description: Permission description
+              example: "Create devices"
+          required:
+            - id
+            - name
+            - resource
+            - action
+
+    # Device management schemas
+    Device:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Device ID
+              example: 1
+            device_group:
+              type: string
+              description: Device group name
+              example: "firewall"
+            name:
+              type: string
+              description: Device name
+              example: "FW-001"
+          required:
+            - id
+            - device_group
+            - name
+
+    DeviceCount:
+      type: object
+      properties:
+        device_group:
+          type: string
+          description: Device group name
+          example: "firewall"
+        devices_count:
+          type: integer
+          description: Number of devices in group
+          example: 5
+      required:
+        - device_group
+        - devices_count
+
+    DeviceGroup:
+      type: object
+      properties:
+        device_group:
+          type: string
+          description: Device group name
+          example: "firewall"
+      required:
+        - device_group
+
+    # Target management schemas
+    Target:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Target ID
+              example: 1
+            subject:
+              type: string
+              description: Email subject
+              example: "Log Detect Alert"
+            to:
+              type: array
+              items:
+                type: string
+              description: Email recipients
+              example: ["admin@company.com", "security@company.com"]
+            enable:
+              type: boolean
+              description: Whether target is enabled
+              example: true
+            indices:
+              type: array
+              items:
+                $ref: '#/components/schemas/Index'
+              description: Associated indices
+          required:
+            - id
+            - subject
+            - to
+            - enable
+
+    # Index management schemas
+    Index:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Index ID
+              example: 1
+            pattern:
+              type: string
+              description: Index pattern
+              example: "logstash-log_detect-*"
+            device_group:
+              type: string
+              description: Associated device group
+              example: "firewall"
+            logname:
+              type: string
+              description: Log name
+              example: "waf"
+            period:
+              type: string
+              description: Time period
+              example: "minutes"
+            unit:
+              type: integer
+              description: Time unit
+              example: 60
+            field:
+              type: string
+              description: Field to monitor
+              example: "host.keyword"
+            targets:
+              type: array
+              items:
+                $ref: '#/components/schemas/Target'
+              description: Associated targets
+          required:
+            - id
+            - pattern
+            - device_group
+            - logname
+            - period
+            - unit
+            - field
+
+    LogName:
+      type: object
+      properties:
+        logname:
+          type: string
+          description: Log name
+          example: "waf"
+      required:
+        - logname
+
+    # History schemas
+    HistoryData:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Device name
+          example: "FW-001"
+        time:
+          type: string
+          description: Time
+          example: "2024-01-01 12:00:00"
+        lost:
+          type: string
+          description: Lost status
+          example: "true"
+      required:
+        - name
+        - time
+        - lost
+
+    LogNameData:
+      type: object
+      properties:
+        logname:
+          type: string
+          description: Log name
+          example: "waf"
+        count:
+          type: integer
+          description: Count
+          example: 10
+      required:
+        - logname
+        - count
+
+    # Receiver schemas
+    Receiver:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Receiver ID
+              example: 1
+            name:
+              type: array
+              items:
+                type: string
+              description: Receiver names/emails
+              example: ["admin@company.com", "security@company.com"]
+          required:
+            - id
+            - name
+
+    # Elasticsearch Monitor schemas
+    ElasticsearchMonitor:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Monitor ID
+              example: 1
+            name:
+              type: string
+              description: Monitor name
+              example: "Production ES Cluster"
+            host:
+              type: string
+              description: Elasticsearch host address
+              example: "es.example.com"
+            port:
+              type: integer
+              description: Elasticsearch port
+              example: 9200
+              default: 9200
+            username:
+              type: string
+              description: Authentication username
+              example: "monitor_user"
+            password:
+              type: string
+              description: Authentication password
+              example: "secure_password"
+            enable_auth:
+              type: boolean
+              description: Enable authentication
+              example: true
+              default: false
+            check_type:
+              type: string
+              description: Check types (comma-separated)
+              example: "health,performance"
+              default: "health,performance"
+            interval:
+              type: integer
+              description: "檢查間隔（單位：秒，範圍：10-3600）"
+              example: 60
+              default: 60
+              minimum: 10
+              maximum: 3600
+            enable_monitor:
+              type: boolean
+              description: Enable monitoring
+              example: true
+              default: true
+            receivers:
+              type: array
+              items:
+                type: string
+                format: email
+              description: "告警接收者陣列"
+              example: ["admin@example.com", "ops@example.com"]
+            subject:
+              type: string
+              description: Alert email subject
+              example: "ES Cluster Alert - Production"
+            description:
+              type: string
+              description: Monitor description
+              example: "Production Elasticsearch cluster monitoring"
+            alert_threshold:
+              type: string
+              description: Alert threshold configuration (JSON string)
+              example: '{"cpu_usage_high":75.0,"memory_usage_high":80.0}'
+          required:
+            - name
+            - host
+
+    ESMonitorStatus:
+      type: object
+      properties:
+        monitor_id:
+          type: integer
+          description: Monitor ID
+          example: 1
+        monitor_name:
+          type: string
+          description: Monitor name
+          example: "Production ES"
+        host:
+          type: string
+          description: Host and port
+          example: "es.example.com:9200"
+        status:
+          type: string
+          description: Monitor status
+          enum: [online, offline, warning, error]
+          example: "online"
+        cluster_status:
+          type: string
+          description: Cluster health status
+          enum: [green, yellow, red]
+          example: "green"
+        cluster_name:
+          type: string
+          description: Cluster name
+          example: "production-cluster"
+        response_time:
+          type: integer
+          format: int64
+          description: "響應時間（單位：毫秒）"
+          example: 45
+        cpu_usage:
+          type: number
+          format: float
+          description: "CPU 使用率（單位：百分比 0-100）"
+          example: 35.5
+        memory_usage:
+          type: number
+          format: float
+          description: "記憶體使用率（單位：百分比 0-100）"
+          example: 72.3
+        disk_usage:
+          type: number
+          format: float
+          description: "磁碟使用率（單位：百分比 0-100）"
+          example: 65.8
+        node_count:
+          type: integer
+          description: Number of nodes
+          example: 3
+        active_shards:
+          type: integer
+          description: Number of active shards
+          example: 120
+        unassigned_shards:
+          type: integer
+          description: Number of unassigned shards
+          example: 0
+        last_check_time:
+          type: string
+          format: date-time
+          description: "最後檢查時間（ISO 8601 格式）"
+          example: "2024-01-01T12:00:00Z"
+        error_message:
+          type: string
+          description: Error message if any
+          example: ""
+        warning_message:
+          type: string
+          description: Warning message if any
+          example: ""
+
+    ESStatistics:
+      type: object
+      properties:
+        total_monitors:
+          type: integer
+          description: Total number of monitors
+          example: 5
+        online_monitors:
+          type: integer
+          description: Number of online monitors
+          example: 4
+        offline_monitors:
+          type: integer
+          description: Number of offline monitors
+          example: 1
+        warning_monitors:
+          type: integer
+          description: Number of monitors with warnings
+          example: 0
+        total_nodes:
+          type: integer
+          description: Total nodes across all clusters
+          example: 15
+        total_indices:
+          type: integer
+          description: Total indices across all clusters
+          example: 250
+        total_documents:
+          type: integer
+          format: int64
+          description: Total documents across all clusters
+          example: 1000000
+        total_size_gb:
+          type: number
+          format: float
+          description: Total size in GB
+          example: 125.5
+        avg_response_time:
+          type: number
+          format: float
+          description: "平均響應時間（單位：毫秒）"
+          example: 52.3
+        avg_cpu_usage:
+          type: number
+          format: float
+          description: "平均 CPU 使用率（單位：百分比 0-100）"
+          example: 45.2
+        avg_memory_usage:
+          type: number
+          format: float
+          description: "平均記憶體使用率（單位：百分比 0-100）"
+          example: 68.7
+        active_alerts:
+          type: integer
+          description: Number of active alerts
+          example: 2
+        last_update_time:
+          type: string
+          description: Last update time
+          example: "2024-01-01 12:00:00"
+
+    ESMetricTimeSeries:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+          description: Timestamp (ISO 8601)
+          example: "2024-01-01T12:00:00Z"
+        cpu_usage:
+          type: number
+          format: float
+          description: "CPU 使用率（單位：百分比 0-100）"
+          example: 45.5
+        memory_usage:
+          type: number
+          format: float
+          description: "記憶體使用率（單位：百分比 0-100）"
+          example: 72.3
+        disk_usage:
+          type: number
+          format: float
+          description: "磁碟使用率（單位：百分比 0-100）"
+          example: 65.8
+        response_time:
+          type: integer
+          format: int64
+          description: "響應時間（單位：毫秒）"
+          example: 45
+        indexing_rate:
+          type: number
+          format: float
+          description: "索引速率（每秒文檔數）"
+          example: 1250.5
+        search_rate:
+          type: number
+          format: float
+          description: "搜尋速率（每秒查詢數）"
+          example: 850.2
+        active_shards:
+          type: integer
+          description: Active shards count
+          example: 120
+        unassigned_shards:
+          type: integer
+          description: Unassigned shards count
+          example: 0
+
+    ESAlert:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Alert ID (auto-generated in TimescaleDB based on time)
+          example: 1
+        time:
+          type: string
+          format: date-time
+          description: Alert creation time (ISO 8601)
+          example: "2024-01-01T12:00:00Z"
+        monitor_id:
+          type: integer
+          description: Monitor ID that triggered this alert
+          example: 1
+        monitor_name:
+          type: string
+          description: Monitor name (joined from monitors table)
+          example: "Production ES Cluster"
+        alert_type:
+          type: string
+          description: Type of alert
+          enum: [health, performance, capacity, availability]
+          example: "performance"
+        severity:
+          type: string
+          description: Alert severity level
+          enum: [critical, high, medium, low]
+          example: "high"
+        message:
+          type: string
+          description: Alert message
+          example: "CPU usage exceeded 80% threshold"
+        status:
+          type: string
+          description: Alert status
+          enum: [active, resolved, acknowledged]
+          example: "active"
+        resolved_at:
+          type: string
+          format: date-time
+          description: Time when alert was resolved (ISO 8601)
+          example: "2024-01-01T13:00:00Z"
+          nullable: true
+        resolution_note:
+          type: string
+          description: Note about how the alert was resolved
+          example: "Service restarted, CPU usage returned to normal"
+          nullable: true
+        acknowledged_by:
+          type: string
+          description: Who acknowledged the alert
+          example: "admin@example.com"
+          nullable: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          description: When the alert was acknowledged (ISO 8601)
+          example: "2024-01-01T12:05:00Z"
+          nullable: true
+        acknowledgement_note:
+          type: string
+          description: Note added when acknowledging
+          example: "Investigating the issue"
+          nullable: true

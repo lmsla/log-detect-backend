@@ -1,5 +1,35 @@
 basePath: /api/v1
 definitions:
+  entities.AlertHistory:
+    properties:
+      alert_type:
+        description: offline, error, warning
+        type: string
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      device_group:
+        type: string
+      device_name:
+        type: string
+      logname:
+        type: string
+      message:
+        type: string
+      resolved_at:
+        type: integer
+      resolved_by:
+        type: string
+      severity:
+        description: low, medium, high, critical
+        type: string
+      status:
+        description: active, resolved, acknowledged
+        type: string
+      updated_at:
+        type: integer
+    type: object
   entities.Device:
     properties:
       created_at:
@@ -15,6 +45,67 @@ definitions:
       updated_at:
         type: integer
     type: object
+  entities.ElasticsearchMonitor:
+    properties:
+      alert_dedupe_window:
+        type: integer
+      alert_threshold:
+        description: 保留 JSON 欄位作為高級配置選項（向後兼容）
+        type: string
+      check_type:
+        type: string
+      cpu_usage_critical:
+        type: number
+      cpu_usage_high:
+        description: 告警閾值配置（獨立欄位，前端友好）
+        type: number
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      disk_usage_critical:
+        type: number
+      disk_usage_high:
+        type: number
+      enable_auth:
+        type: boolean
+      enable_monitor:
+        type: boolean
+      host:
+        type: string
+      id:
+        type: integer
+      interval:
+        type: integer
+      memory_usage_critical:
+        type: number
+      memory_usage_high:
+        type: number
+      name:
+        type: string
+      password:
+        type: string
+      port:
+        type: integer
+      receivers:
+        items:
+          type: string
+        type: array
+      response_time_critical:
+        type: integer
+      response_time_high:
+        type: integer
+      subject:
+        type: string
+      unassigned_shards_threshold:
+        type: integer
+      updated_at:
+        type: integer
+      username:
+        type: string
+    type: object
   entities.Index:
     properties:
       created_at:
@@ -23,8 +114,6 @@ definitions:
         type: integer
       device_group:
         type: string
-      enable:
-        type: boolean
       field:
         type: string
       id:
@@ -44,6 +133,23 @@ definitions:
         type: integer
       updated_at:
         type: integer
+    type: object
+  entities.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  entities.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/entities.User'
     type: object
   entities.MainMenu:
     properties:
@@ -77,6 +183,27 @@ definitions:
       url:
         type: string
     type: object
+  entities.Permission:
+    properties:
+      action:
+        description: e.g., "create", "read", "update", "delete"
+        type: string
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      resource:
+        description: e.g., "device", "target", "user"
+        type: string
+      updated_at:
+        type: integer
+    type: object
   entities.Receiver:
     properties:
       created_at:
@@ -88,6 +215,25 @@ definitions:
       name:
         items:
           type: string
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  entities.Role:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/entities.Permission'
         type: array
       updated_at:
         type: integer
@@ -115,6 +261,27 @@ definitions:
         type: array
       updated_at:
         type: integer
+    type: object
+  entities.User:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      email:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      role:
+        $ref: '#/definitions/entities.Role'
+      role_id:
+        type: integer
+      updated_at:
+        type: integer
+      username:
+        type: string
     type: object
   models.Response:
     properties:
@@ -535,6 +702,962 @@ paths:
       summary: Update Target
       tags:
       - Target
+  /admin/data/archive-history:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Number of days to archive (move to archive table)
+        in: query
+        name: days
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Archive Old History Records
+      tags:
+      - Data Management
+  /admin/data/clean-history:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Number of days to keep (delete older records)
+        in: query
+        name: days
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Clean Old History Records
+      tags:
+      - Data Management
+  /admin/data/create-aggregates:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'Target date (YYYY-MM-DD, default: yesterday)'
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Create Daily Aggregates
+      tags:
+      - Data Management
+  /admin/data/storage-stats:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Storage Statistics
+      tags:
+      - Data Management
+  /api/v1/elasticsearch/alerts:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - collectionFormat: multi
+        description: Status filter (active, resolved, acknowledged)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: multi
+        description: Severity filter (critical, high, medium, low)
+        in: query
+        items:
+          type: string
+        name: severity
+        type: array
+      - collectionFormat: multi
+        description: Alert type filter
+        in: query
+        items:
+          type: string
+        name: alert_type
+        type: array
+      - description: Monitor ID
+        in: query
+        name: monitor_id
+        type: integer
+      - description: Start time (ISO 8601)
+        in: query
+        name: start_time
+        type: string
+      - description: End time (ISO 8601)
+        in: query
+        name: end_time
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Alerts
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/alerts/{monitor_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: monitor_id
+        required: true
+        type: integer
+      - description: Alert time (ISO 8601)
+        in: query
+        name: alert_time
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Alert By ID
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/alerts/{monitor_id}/acknowledge:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: monitor_id
+        required: true
+        type: integer
+      - description: Acknowledge params
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Acknowledge ES Alert
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/alerts/{monitor_id}/resolve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: monitor_id
+        required: true
+        type: integer
+      - description: Resolve params
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Resolve ES Alert
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/monitors:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get All ES Monitors
+      tags:
+      - Elasticsearch
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ES Monitor Config
+        in: body
+        name: monitor
+        required: true
+        schema:
+          $ref: '#/definitions/entities.ElasticsearchMonitor'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create ES Monitor
+      tags:
+      - Elasticsearch
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ES Monitor Config
+        in: body
+        name: monitor
+        required: true
+        schema:
+          $ref: '#/definitions/entities.ElasticsearchMonitor'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Update ES Monitor
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/monitors/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Delete ES Monitor
+      tags:
+      - Elasticsearch
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Monitor by ID
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/monitors/{id}/test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Test ES Connection
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/monitors/{id}/toggle:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Enable/Disable
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            enable:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Toggle ES Monitor
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/statistics:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Statistics
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/status:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get All ES Monitors Status
+      tags:
+      - Elasticsearch
+  /api/v1/elasticsearch/status/{id}/history:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Hours to query (default: 24, max: 720)'
+        in: query
+        name: hours
+        type: integer
+      - description: Time bucket interval (e.g., '1 minute', '5 minutes', '1 hour')
+        in: query
+        name: interval
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Monitor History
+      tags:
+      - Elasticsearch
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/entities.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: User Login
+      tags:
+      - Auth
+  /auth/profile:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Current User Profile
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Refresh Token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User registration data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/entities.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Register User
+      tags:
+      - Auth
+  /auth/users:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entities.User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: List Users
+      tags:
+      - Auth
+  /auth/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete User
+      tags:
+      - Auth
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User by ID
+      tags:
+      - Auth
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated user data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/entities.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update User
+      tags:
+      - Auth
+  /dashboard/alerts:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Alert data
+        in: body
+        name: alert
+        required: true
+        schema:
+          $ref: '#/definitions/entities.AlertHistory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Create Alert
+      tags:
+      - Dashboard
+  /dashboard/alerts/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update
+        in: body
+        name: status
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update Alert Status
+      tags:
+      - Dashboard
+  /dashboard/alerts/recent:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'Number of alerts to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: Alert status filter (active, resolved, acknowledged)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Recent Alerts
+      tags:
+      - Dashboard
+  /dashboard/devices/{device_name}/timeline:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Device name
+        in: path
+        name: device_name
+        required: true
+        type: string
+      - description: Log name
+        in: query
+        name: logname
+        required: true
+        type: string
+      - description: 'Number of days (default: 7)'
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Device Timeline
+      tags:
+      - Dashboard
+  /dashboard/devices/status:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Log name filter
+        in: query
+        name: logname
+        type: string
+      - description: Device group filter
+        in: query
+        name: device_group
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Device Status Overview
+      tags:
+      - Dashboard
+  /dashboard/groups/statistics:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Log name
+        in: query
+        name: logname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Group Statistics
+      tags:
+      - Dashboard
+  /dashboard/overview:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Dashboard Data
+      tags:
+      - Dashboard
+  /dashboard/statistics:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Log name filter
+        in: query
+        name: logname
+        type: string
+      - description: Device group filter
+        in: query
+        name: device_group
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get History Statistics
+      tags:
+      - Dashboard
+  /dashboard/trends:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Log name filter
+        in: query
+        name: logname
+        type: string
+      - description: Device group filter
+        in: query
+        name: device_group
+        type: string
+      - description: 'Number of days (default: 30)'
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Trend Data
+      tags:
+      - Dashboard
   /get-server-module:
     get:
       consumes:
