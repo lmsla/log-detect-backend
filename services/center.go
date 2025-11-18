@@ -22,7 +22,8 @@ func ExecuteCrontab(target_id int, index_id int, cronjob string, index string, f
 
 	EntryID, err := global.Crontab.AddFunc(cronjob, func() {
 		execute_time := time.Now()
-		Detect(execute_time, index, field, period, unit, receiver, subject, logname, device_group)
+		// 傳入 index_id 以使用對應的 ES 連線
+		Detect(execute_time, index_id, index, field, period, unit, receiver, subject, logname, device_group)
 	})
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Crontab AddFunc error: %s", err.Error()))
