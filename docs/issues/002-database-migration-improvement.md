@@ -265,7 +265,7 @@ func main() {
 
 ### Phase 1：基礎建設（1天）✅ 已完成
 **完成日期**: 2025-11-18
-**Commit**: 待提交
+**Commit**: `e12b012` - feat: Issue #002 Phase 1-2 - 資料庫 Migration 機制建立
 
 #### 1.1 安裝 Migration 工具
 - [x] 添加 `github.com/golang-migrate/migrate/v4` 到 go.mod
@@ -298,7 +298,7 @@ func main() {
 
 ### Phase 2：補齊缺失內容（0.5天）✅ 已完成
 **完成日期**: 2025-11-18
-**Commit**: 待提交
+**Commit**: `e12b012` - feat: Issue #002 Phase 1-2 - 資料庫 Migration 機制建立
 
 #### 2.1 修復 AutoMigrate 遺漏
 - [x] 修改 `services/sqltable.go`
