@@ -1,10 +1,11 @@
 # Issue #001: 整合 ES 連線管理架構
 
-**狀態**: 📋 規劃中
+**狀態**: 🚧 進行中 (Phase 1 已完成)
 **優先級**: 🔴 高
 **建立日期**: 2025-11-18
 **負責人**: 待指派
 **預計時程**: 5-6 天
+**目前進度**: Phase 1/5 完成 (20%)
 
 ---
 
@@ -199,44 +200,52 @@ elasticsearch_monitors:
 
 ## 📋 實作計畫
 
-### Phase 1：基礎建設（2天）
+### Phase 1：基礎建設（2天）✅ 已完成
 **目標**: 建立 ES 連線管理核心架構
+**完成日期**: 2025-11-18
+**Commit**: `633ad98` - feat: Phase 1 - ES 連線管理架構基礎建設
 
 #### 資料庫層
-- [ ] 建立 `es_connections` 表（含索引、約束）
-- [ ] 修改 `indices` 表，新增 `es_connection_id` 欄位與外鍵
-- [ ] 修改 `elasticsearch_monitors` 表，新增 `es_connection_id` 欄位（可選）
-- [ ] 撰寫資料庫遷移 SQL 腳本
+- [x] 建立 `es_connections` 表（含索引、約束）
+- [x] 修改 `indices` 表，新增 `es_connection_id` 欄位與外鍵
+- [x] 修改 `elasticsearch_monitors` 表，新增 `es_connection_id` 欄位（可選）
+- [x] 撰寫資料庫遷移 SQL 腳本
 
 #### 實體層
-- [ ] 建立 `entities/es_connection.go`
-  - [ ] ESConnection 結構體
-  - [ ] TableName() 方法
-  - [ ] GetURL() 方法
-- [ ] 修改 `entities/targets.go` 的 Index 結構體
-  - [ ] 新增 ESConnectionID 欄位
-  - [ ] 新增 ESConnection 關聯
-- [ ] 修改 `entities/elasticsearch.go` 的 ElasticsearchMonitor（可選）
-  - [ ] 新增 ESConnectionID 欄位
+- [x] 建立 `entities/es_connection.go`
+  - [x] ESConnection 結構體
+  - [x] TableName() 方法
+  - [x] GetURL() 方法
+- [x] 修改 `entities/targets.go` 的 Index 結構體
+  - [x] 新增 ESConnectionID 欄位
+  - [x] 新增 ESConnection 關聯
+- [x] 修改 `entities/elasticsearch.go` 的 ElasticsearchMonitor（可選）
+  - [x] 新增 ESConnectionID 欄位
 
 #### 服務層
-- [ ] 建立 `services/es_connection_manager.go`
-  - [ ] ESConnectionManager 結構體（單例模式）
-  - [ ] Initialize() - 從資料庫載入所有連線
-  - [ ] GetClient(connectionID) - 根據 ID 取得客戶端
-  - [ ] GetClientForIndex(indexID) - 為 Index 取得客戶端
-  - [ ] GetDefaultClient() - 取得預設客戶端
-  - [ ] ReloadConnection(connectionID) - 重新載入連線
-  - [ ] createClient() - 建立 ES 客戶端（私有方法）
-  - [ ] loadFromConfig() - 從 setting.yml 載入（向後兼容）
-- [ ] 修改 `clients/es.go`
-  - [ ] 使用 ESConnectionManager 初始化
-  - [ ] Fallback 到 setting.yml（向後兼容）
+- [x] 建立 `services/es_connection_manager.go`
+  - [x] ESConnectionManager 結構體（單例模式）
+  - [x] Initialize() - 從資料庫載入所有連線
+  - [x] GetClient(connectionID) - 根據 ID 取得客戶端
+  - [x] GetClientForIndex(indexID) - 為 Index 取得客戶端
+  - [x] GetDefaultClient() - 取得預設客戶端
+  - [x] ReloadConnection(connectionID) - 重新載入連線
+  - [x] createClient() - 建立 ES 客戶端（私有方法）
+  - [x] loadFromConfig() - 從 setting.yml 載入（向後兼容）
+- [x] 修改 `clients/es.go`
+  - [x] 使用 ESConnectionManager 初始化
+  - [x] Fallback 到 setting.yml（向後兼容）
 
 #### 工具層
-- [ ] 建立 `utils/migrate_es_config.go`
-  - [ ] MigrateESConfigToDB() - 將 setting.yml 的 ES 配置遷移到資料庫
-  - [ ] 自動檢測並提示遷移
+- [x] 建立 `utils/migrate_es_config.go`
+  - [x] MigrateESConfigToDB() - 將 setting.yml 的 ES 配置遷移到資料庫
+  - [x] 自動檢測並提示遷移
+
+#### 成果
+- 新增 10 個檔案，修改 3 個檔案
+- 新增 ~850 行程式碼
+- 完整的連線管理器實作（單例模式、執行緒安全）
+- 向後兼容策略完整實作
 
 ### Phase 2：整合裝置監控（1.5天）
 **目標**: 修改裝置監控使用新的連線管理架構
