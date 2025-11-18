@@ -10,10 +10,12 @@ import (
 	// "log"
 	"log-detect/clients"
 	"log-detect/log"
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
 
-func Insert_HistoryData(historyData entities.History) {
+// Insert_HistoryDataWithClient 使用指定的 ES 客戶端插入歷史資料（支援多連線）
+func Insert_HistoryDataWithClient(esClient *elasticsearch.Client, historyData entities.History) {
 
 	// 將資料轉換為 JSON
 	var buf bytes.Buffer
@@ -34,7 +36,7 @@ func Insert_HistoryData(historyData entities.History) {
 	}
 
 	// 執行請求
-	res, err := req.Do(context.Background(), clients.ES)
+	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("es insert request error,%s", err.Error()))
 
@@ -54,4 +56,9 @@ func Insert_HistoryData(historyData entities.History) {
 	}
 	// return res.Body
 
+}
+
+// Insert_HistoryData 使用預設 ES 客戶端插入歷史資料（向後兼容）
+func Insert_HistoryData(historyData entities.History) {
+	Insert_HistoryDataWithClient(clients.ES, historyData)
 }

@@ -8,9 +8,11 @@ import (
 	"log-detect/log"
 	"log-detect/models"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v8"
 )
 
-func Detect(execute_time time.Time, index string, field string, period string, unit int, receiver []string, subject string, logname string, device_group string) {
+func Detect(execute_time time.Time, indexID int, index string, field string, period string, unit int, receiver []string, subject string, logname string, device_group string) {
 	timenow := execute_time.Format("2006-01-02 15:04:05")
 	// var cronjob string
 	var time3_str string
@@ -25,8 +27,22 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 		time3_str = time3.Format("2006-01-02T15:04") + ":00.000+08:00"
 	}
 
+	// 取得該 Index 對應的 ES 客戶端
+	manager := GetESConnectionManager()
+	esClient, err := manager.GetClientForIndex(indexID)
+	if err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to get ES client for index %d: %s", indexID, err.Error()))
+		log.Logrecord_no_rotate("WARNING", fmt.Sprintf("Falling back to default ES client for index %d", indexID))
+		// Fallback 到預設客戶端
+		esClient = manager.GetDefaultClient()
+		if esClient == nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Default ES client is nil, cannot execute detect for index %d", indexID))
+			return
+		}
+	}
+
 	var result_list []string
-	result := SearchRequest(index, field, time3_str, timenow)
+	result := SearchRequestWithClient(esClient, index, field, time3_str, timenow)
 	// fmt.Println("資料搜尋結果:",result)
 
 	for i := range result.Aggregations.Num2.Buckets {
