@@ -23,6 +23,11 @@ type ElasticsearchMonitor struct {
 	Subject           string   `json:"subject" gorm:"type:varchar(255);comment:告警主題"`
 	Description       string   `json:"description" gorm:"type:text;comment:監控描述"`
 
+	// ES 連線配置（可選，用於複用 indices 的 ES 連線）
+	// NULL 表示使用自己的 host/port，有值表示複用指定的連線配置
+	ESConnectionID *int          `gorm:"index" json:"es_connection_id" form:"es_connection_id"`
+	ESConnection   *ESConnection `gorm:"foreignKey:ESConnectionID" json:"es_connection,omitempty"`
+
 	// 告警閾值配置（獨立欄位，前端友好）
 	CPUUsageHigh            *float64 `json:"cpu_usage_high" gorm:"type:decimal(5,2);comment:CPU使用率-高閾值(%)"`
 	CPUUsageCritical        *float64 `json:"cpu_usage_critical" gorm:"type:decimal(5,2);comment:CPU使用率-危險閾值(%)"`
