@@ -12,6 +12,22 @@ database:
   log_enable: 0
   migration: "true"
 
+timescale:
+  host: "10.99.1.213"
+  port: "5432"
+  user: "logdetect"
+  password: "your_secure_password"
+  name: "monitoring"
+  max_idle: 10
+  max_life_time: "1h"
+  max_open_conn: 100
+  sslmode: "disable"
+
+batch_writer:
+  enabled: true
+  batch_size: 50
+  flush_interval: "5s"
+
 cors:
   allow:
     headers: "Content-type Access-Control-Allow-Origin Authorization Refresh-token"
@@ -22,15 +38,15 @@ server:
   port: :8006
 
 es:
-  url: https://10.99.1.93:9200
+  url: https://10.99.1.213:9200
   sourceAccount: "elastic"
-  sourcePassword: "12345678"
+  sourcePassword: "a12345678"
   # url: https://10.99.1.64:9200
   # sourceAccount: "elastic"
   # sourcePassword: "a12345678"
 
 path:
-  log_record: "/Users/chen/Downloads/01BiMap/程式區/log-detect-golang版/log-detect-ver01/log_record"
+  log_record: "/Users/chen/Downloads/01BiMap/03MyDevs/log-detect/log-detect-backend/log_record"
 
 
 email:

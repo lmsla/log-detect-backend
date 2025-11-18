@@ -11,7 +11,7 @@ import (
 )
 
 func Detect(execute_time time.Time, index string, field string, period string, unit int, receiver []string, subject string, logname string, device_group string) {
-	timenow := execute_time.Format("2006-01-02T15:04") + ":00.000+08:00"
+	timenow := execute_time.Format("2006-01-02 15:04:05")
 	// var cronjob string
 	var time3_str string
 	date_time := execute_time.Format("2006-01-02")
@@ -40,7 +40,7 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 
 	deviceslist, err := GetDevicesDataByGroupName(device_group)
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get devices data error: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get devices data error: %s", err.Error()))
 	}
 	var device_list []string
 	var origin_list []entities.Device
@@ -70,7 +70,7 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 	}
 
 	/// added: 搜尋結果中新增的 device ; removed: 搜尋結果中缺失的 device
-	added, removed,intersection := ListCompare(device_list, result_list)
+	added, removed, intersection := ListCompare(device_list, result_list)
 	fmt.Println("新增的設備:", added)
 
 	// 將偵測到的新設備寫入 devices table 中
@@ -90,7 +90,7 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 	rows, err := global.Mysql.Raw("SELECT MIN(id) as id FROM devices GROUP BY name, device_group HAVING COUNT(*) > 1").Rows()
 	if err != nil {
 		// 處理錯誤
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error querying duplicate devices: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error querying duplicate devices: %s", err.Error()))
 		return
 	}
 	defer rows.Close()
@@ -106,7 +106,7 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 	result_to := global.Mysql.Where("id IN (?)", ids).Delete(&entities.Device{})
 	if result_to.Error != nil {
 		// 處理錯誤
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error deleting duplicate devices: %s",result_to.Error.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error deleting duplicate devices: %s", result_to.Error.Error()))
 		return
 	}
 
@@ -116,52 +116,89 @@ func Detect(execute_time time.Time, index string, field string, period string, u
 	if removed != nil {
 		// SendEmail(receiver,subject,logname,removed)
 		Mail4(receiver, cc, bcc, subject, logname, removed)
-		mailHistory := entities.MailHistory {
-			Date: date_time,
-			Time: hour_time,
+		mailHistory := entities.MailHistory{
+			Date:    date_time,
+			Time:    hour_time,
 			Logname: logname,
-			Sended: true,
+			Sended:  true,
 		}
 		CreateMailHistory(mailHistory)
 	}
-	// 紀錄檢查結果到 es 中
+	// 紀錄檢查結果到歷史記錄中
 	for _, device := range intersection {
-
 		historyData := entities.History{
-			Logname: logname,
-			DeviceGroup: device_group ,
-			Name: device,
-			Lost: "false",
-			LostNum: 2,
-			Date: date_time,
-			Time: hour_time,
-			DateTime: timenow,
+			// 基本信息
+			Logname:     logname,
+			DeviceGroup: device_group,
+			Name:        device,
+
+			// 檢查結果
+			Status:  "online",
+			Lost:    "false",
+			LostNum: 0,
+
+			// 時間信息
+			Date:      date_time,
+			Time:      hour_time,
+			DateTime:  timenow,
+			Timestamp: execute_time.Unix(),
+
+			// 檢查配置
 			Period: period,
-			Unit: unit,
+			Unit:   unit,
+
+			// 性能指標 (模擬數據)
+			ResponseTime: 100, // 模擬響應時間
+			DataCount:    1,   // 檢查到的數據量
 		}
+
 		Insert_HistoryData(historyData)
-		CreateHistory(historyData)
-		
+		if err := global.BatchWriter.AddHistory(historyData); err != nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
+		}
 	}
 
 	// 紀錄缺失設備到 history table 中
+	log.Logrecord_no_rotate("INFO", fmt.Sprintf("Processing %d offline devices", len(removed)))
 	for _, device := range removed {
-
+		log.Logrecord_no_rotate("INFO", fmt.Sprintf("Creating history record for offline device: %s", device))
 		historyData := entities.History{
-			Logname: logname,
-			DeviceGroup: device_group ,
-			Name: device,
-			Lost: "true",
+			// 基本信息
+			Logname:     logname,
+			DeviceGroup: device_group,
+			Name:        device,
+
+			// 檢查結果
+			Status:  "offline",
+			Lost:    "true",
 			LostNum: 1,
-			Date: date_time,
-			Time: hour_time,
-			DateTime: timenow,
+
+			// 時間信息
+			Date:      date_time,
+			Time:      hour_time,
+			DateTime:  timenow,
+			Timestamp: execute_time.Unix(),
+
+			// 檢查配置
 			Period: period,
-			Unit: unit,
+			Unit:   unit,
+
+			// 性能指標
+			ResponseTime: 0, // 離線設備無響應時間
+			DataCount:    0, // 離線設備無數據
+
+			// 錯誤信息
+			ErrorMsg:  "Device not found in logs",
+			ErrorCode: "DEVICE_OFFLINE",
 		}
+
+		log.Logrecord_no_rotate("INFO", fmt.Sprintf("About to add history to batch for device: %s", device))
 		Insert_HistoryData(historyData)
-		CreateHistory(historyData)
-		
+		if err := global.BatchWriter.AddHistory(historyData); err != nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
+		} else {
+			log.Logrecord_no_rotate("INFO", fmt.Sprintf("Successfully added history record for offline device: %s", device))
+		}
 	}
 
 }
