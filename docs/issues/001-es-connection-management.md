@@ -1,11 +1,11 @@
 # Issue #001: 整合 ES 連線管理架構
 
-**狀態**: 🚧 進行中 (Phase 1-2 已完成)
+**狀態**: 🚧 進行中 (Phase 1-3 已完成)
 **優先級**: 🔴 高
 **建立日期**: 2025-11-18
 **負責人**: 待指派
 **預計時程**: 5-6 天
-**目前進度**: Phase 2/5 完成 (40%)
+**目前進度**: Phase 3/5 完成 (60%)
 
 ---
 
@@ -282,29 +282,44 @@ elasticsearch_monitors:
 - 完整的 Fallback 與錯誤處理
 - 100% 向後兼容（保留所有原有函數）
 
-### Phase 3：API 與前端（1.5天）
+### Phase 3：API 與前端（1.5天）✅ 已完成
 **目標**: 提供 Web UI 管理 ES 連線
+**完成日期**: 2025-11-18
+**Commit**: 待提交 - feat: Phase 3 - ES 連線管理 API 層實作
 
 #### API 層
-- [ ] 建立 `controller/es_connection.go`
-  - [ ] CreateESConnection - 建立連線
-  - [ ] GetAllESConnections - 取得所有連線
-  - [ ] GetESConnection - 取得單一連線
-  - [ ] UpdateESConnection - 更新連線
-  - [ ] DeleteESConnection - 刪除連線
-  - [ ] TestESConnection - 測試連線（不儲存）
-  - [ ] ReloadESConnection - 重新載入連線
-  - [ ] SetDefaultESConnection - 設定預設連線
-- [ ] 建立對應的 Service 層函數
-  - [ ] services/es_connection_service.go
-- [ ] 註冊路由（含 RBAC 權限檢查）
+- [x] 建立 `services/es_connection_service.go`
+  - [x] GetAllESConnections - 取得所有連線
+  - [x] GetESConnection - 取得單一連線
+  - [x] CreateESConnection - 建立連線（含名稱唯一性驗證、預設連線管理）
+  - [x] UpdateESConnection - 更新連線（含名稱衝突檢查、預設連線管理）
+  - [x] DeleteESConnection - 刪除連線（含依賴檢查：Index、Monitor）
+  - [x] TestESConnection - 測試連線（不儲存到資料庫）
+  - [x] SetDefaultESConnection - 設定預設連線
+  - [x] ReloadESConnection - 重新載入指定連線
+  - [x] ReloadAllESConnections - 重新載入所有連線
+- [x] 建立 `controller/es_connection.go`
+  - [x] 9 個端點完整實作（GetAll, Get, Create, Update, Delete, Test, SetDefault, Reload, ReloadAll）
+  - [x] Swagger 文件註解完整
+  - [x] 統一的錯誤處理與返回格式
+- [x] 註冊路由到 `router/router.go`
+  - [x] 添加 `/api/v1/ESConnection` 路由組
+  - [x] 整合 AuthMiddleware（JWT 認證）
+  - [x] 整合 PermissionMiddleware（使用 indices 權限）
+  - [x] RESTful 風格路由設計
 
 #### 修改現有 API
-- [ ] 修改 Index CRUD API
-  - [ ] CreateIndex - 支援指定 es_connection_id
-  - [ ] UpdateIndex - 支援更新 es_connection_id
-  - [ ] GetIndex - 返回關聯的 ESConnection 資訊
-  - [ ] GetAllIndices - Preload ESConnection
+- [x] 修改 Index Service 層
+  - [x] GetAllIndices - Preload("ESConnection") 返回關聯資訊
+  - [x] GetIndicesByTargetID - Preload("Indices.ESConnection")
+  - [x] CreateIndex/UpdateIndex - 自動支援 es_connection_id（透過 Gin Bind）
+
+#### 文件更新
+- [x] 更新 `docs/openapi.yml`
+  - [x] 新增 ES Connection Management 端點（9 個完整端點）
+  - [x] 新增 ESConnection schema 定義
+  - [x] 新增 ESConnectionSummary schema 定義
+  - [x] 更新 Index schema（添加 es_connection_id 和 es_connection 欄位）
 
 #### 前端開發（待前端團隊配合）
 - [ ] ES 連線管理頁面
@@ -317,6 +332,14 @@ elasticsearch_monitors:
 - [ ] 修改 Index 管理頁面
   - [ ] 新增「ES 連線」下拉選單
   - [ ] 顯示當前使用的 ES 連線資訊
+
+#### 成果
+- 新增 2 個檔案（services/es_connection_service.go, controller/es_connection.go）
+- 修改 3 個檔案（router/router.go, services/indices.go, docs/openapi.yml）
+- 新增 ~700 行程式碼
+- 9 個完整的 RESTful API 端點
+- 完整的錯誤處理與驗證邏輯
+- 安全設計：返回 ESConnectionSummary（不含密碼）
 
 ### Phase 4：整合健康監控（可選，1天）
 **目標**: 讓健康監控支援複用連線配置

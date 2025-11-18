@@ -860,6 +860,356 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # ES Connection Management endpoints
+  /api/v1/ESConnection/GetAll:
+    get:
+      tags:
+        - ES Connection Management
+      summary: Get All ES Connections
+      description: Retrieve all Elasticsearch connection configurations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ES connections retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ESConnectionSummary'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Get/{id}:
+    get:
+      tags:
+        - ES Connection Management
+      summary: Get ES Connection
+      description: Retrieve a specific ES connection by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ES Connection ID
+      responses:
+        '200':
+          description: ES connection retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ESConnectionSummary'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ES connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Create:
+    post:
+      tags:
+        - ES Connection Management
+      summary: Create ES Connection
+      description: Create a new Elasticsearch connection configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ESConnection'
+      responses:
+        '200':
+          description: ES connection created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ESConnectionSummary'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Update:
+    put:
+      tags:
+        - ES Connection Management
+      summary: Update ES Connection
+      description: Update an existing ES connection configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ESConnection'
+      responses:
+        '200':
+          description: ES connection updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ESConnectionSummary'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Delete/{id}:
+    delete:
+      tags:
+        - ES Connection Management
+      summary: Delete ES Connection
+      description: Delete an ES connection configuration (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ES Connection ID
+      responses:
+        '200':
+          description: ES connection deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Cannot delete - connection is in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Test:
+    post:
+      tags:
+        - ES Connection Management
+      summary: Test ES Connection
+      description: Test an ES connection without saving it to database
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ESConnection'
+      responses:
+        '200':
+          description: Connection test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "online"
+                  url:
+                    type: string
+                    example: "https://es.example.com:9200"
+                  response:
+                    type: string
+                    example: "200 OK"
+                  enable_auth:
+                    type: boolean
+                    example: true
+        '400':
+          description: Connection test failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/SetDefault/{id}:
+    put:
+      tags:
+        - ES Connection Management
+      summary: Set Default ES Connection
+      description: Set a specific ES connection as the default connection
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ES Connection ID
+      responses:
+        '200':
+          description: Default ES connection set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ES connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/Reload/{id}:
+    put:
+      tags:
+        - ES Connection Management
+      summary: Reload ES Connection
+      description: Reload a specific ES connection in the connection manager
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ES Connection ID
+      responses:
+        '200':
+          description: ES connection reloaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ES connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ESConnection/ReloadAll:
+    put:
+      tags:
+        - ES Connection Management
+      summary: Reload All ES Connections
+      description: Reload all ES connections in the connection manager
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All ES connections reloaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # History endpoints
   /api/v1/History/GetData/{logname}:
     get:
@@ -2201,6 +2551,16 @@ components:
               type: string
               description: Field to monitor
               example: "host.keyword"
+            es_connection_id:
+              type: integer
+              nullable: true
+              description: ES Connection ID (null means use default connection)
+              example: 1
+            es_connection:
+              allOf:
+                - $ref: '#/components/schemas/ESConnectionSummary'
+              nullable: true
+              description: Associated ES Connection details
             targets:
               type: array
               items:
@@ -2280,6 +2640,113 @@ components:
           required:
             - id
             - name
+
+    # ES Connection Management schemas
+    ESConnection:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: ES Connection ID
+              example: 1
+            name:
+              type: string
+              description: Connection name (unique)
+              example: "Production ES"
+            host:
+              type: string
+              description: Elasticsearch host address
+              example: "es.production.com"
+            port:
+              type: integer
+              description: Elasticsearch port
+              example: 9200
+              default: 9200
+            username:
+              type: string
+              description: Authentication username
+              example: "elastic_user"
+              nullable: true
+            password:
+              type: string
+              description: Authentication password (only needed for create/update)
+              example: "secure_password"
+              nullable: true
+            enable_auth:
+              type: boolean
+              description: Enable authentication
+              example: true
+              default: false
+            use_tls:
+              type: boolean
+              description: Use TLS/HTTPS
+              example: true
+              default: true
+            is_default:
+              type: boolean
+              description: Is default connection
+              example: false
+              default: false
+            description:
+              type: string
+              description: Connection description
+              example: "Production cluster for main application logs"
+              nullable: true
+          required:
+            - name
+            - host
+
+    ESConnectionSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ES Connection ID
+          example: 1
+        name:
+          type: string
+          description: Connection name
+          example: "Production ES"
+        host:
+          type: string
+          description: Elasticsearch host address
+          example: "es.production.com"
+        port:
+          type: integer
+          description: Elasticsearch port
+          example: 9200
+        enable_auth:
+          type: boolean
+          description: Enable authentication
+          example: true
+        use_tls:
+          type: boolean
+          description: Use TLS/HTTPS
+          example: true
+        is_default:
+          type: boolean
+          description: Is default connection
+          example: false
+        description:
+          type: string
+          description: Connection description
+          example: "Production cluster for main application logs"
+          nullable: true
+        status:
+          type: string
+          description: Connection status (online, offline, unknown)
+          example: "online"
+          nullable: true
+      required:
+        - id
+        - name
+        - host
+        - port
+        - enable_auth
+        - use_tls
+        - is_default
 
     # Elasticsearch Monitor schemas
     ElasticsearchMonitor:
