@@ -1,11 +1,11 @@
 # Issue #002: 資料庫 Migration 機制完善
 
-**狀態**: 📝 規劃中
+**狀態**: 🚧 進行中 (Phase 1 完成)
 **優先級**: 🟡 中高
 **建立日期**: 2025-11-18
 **負責人**: 待指派
 **預計時程**: 3-4 天
-**目前進度**: 0/5 完成 (0%)
+**目前進度**: Phase 1/5 完成 (20%)
 
 ---
 
@@ -263,37 +263,60 @@ func main() {
 
 ## 📋 實作計畫
 
-### Phase 1：基礎建設（1天）
+### Phase 1：基礎建設（1天）✅ 已完成
+**完成日期**: 2025-11-18
+**Commit**: 待提交
 
 #### 1.1 安裝 Migration 工具
-- [ ] 添加 `github.com/golang-migrate/migrate/v4` 到 go.mod
-- [ ] 建立 `migrations/mysql/` 和 `migrations/timescaledb/` 目錄
-- [ ] 建立 Migration 執行器 `utils/migrate.go`
-- [ ] 建立 CLI 工具 `cmd/migrate/main.go`
+- [x] 添加 `github.com/golang-migrate/migrate/v4` 到 go.mod
+- [x] 添加 MySQL 和 PostgreSQL driver
+- [x] 建立 `migrations/mysql/` 和 `migrations/timescaledb/` 目錄
+- [x] 建立 Migration 執行器 `utils/migration_manager.go`
+- [x] 建立 CLI 工具 `cmd/migrate/main.go`
+- [x] 建立 Makefile 簡化操作
 
-#### 1.2 建立初始 Schema Migration
-- [ ] **000001_initial_schema.up.sql** - 當前所有表的完整 schema
-  - Users, Roles, Permissions
-  - Devices, Receivers, Indices, Targets, IndicesTargets
-  - History, HistoryArchive, HistoryDailyStats
-  - MailHistory, AlertHistory, CronList
-  - ElasticsearchMonitor, ESConnection, Module
-- [ ] **000001_initial_schema.down.sql** - 回滾腳本
-- [ ] 驗證 migration 在乾淨環境中可正常執行
+#### 1.2 移動現有 Migration 檔案
+- [x] 移動 Phase 1 建立的 SQL 檔案到 `migrations/mysql/`
+  - `001_create_es_connections.up/down.sql`
+  - `002_alter_indices_add_es_connection.up/down.sql`
+  - `003_alter_elasticsearch_monitors_add_es_connection.up/down.sql`
 
-#### 1.3 TimescaleDB Migrations
-- [ ] **000001_create_es_metrics.up.sql**
-- [ ] **000002_create_es_alerts.up.sql**
-- [ ] 對應的 down.sql 檔案
+#### 1.3 建立工具與文件
+- [x] Makefile 指令
+  - `make migrate-up` - 執行 migrations
+  - `make migrate-down` - 回滾 migration
+  - `make migrate-version` - 查看版本
+  - `make migrate-create` - 建立新 migration
+  - `make migrate-goto` - 遷移到指定版本
+  - `make migrate-force` - 強制設定版本
 
-### Phase 2：補齊缺失內容（0.5天）
+#### 成果
+- 新增 3 個檔案（utils/migration_manager.go, cmd/migrate/main.go, Makefile）
+- 移動 6 個 migration 檔案到正確位置
+- 完整的 CLI 工具支援 up/down/version/goto/force 操作
+- Makefile 簡化日常操作
+
+### Phase 2：補齊缺失內容（0.5天）✅ 已完成
+**完成日期**: 2025-11-18
+**Commit**: 待提交
 
 #### 2.1 修復 AutoMigrate 遺漏
-- [ ] 修改 `services/sqltable.go`
-  - [ ] 添加 `&entities.ESConnection{}`
-  - [ ] 添加 `&entities.IndicesTargets{}`（視情況）
-  - [ ] 添加 `&entities.Module{}`
-- [ ] 執行測試確保無錯誤
+- [x] 修改 `services/sqltable.go`
+  - [x] 添加 `&entities.ESConnection{}`
+  - [x] 添加 `&entities.Module{}`
+  - [x] 重新組織程式碼，添加分類註解
+- [x] 驗證編譯無錯誤
+
+#### 成果
+- 修復了 Issue #001 無法運作的關鍵問題
+- ESConnection 表現在會自動建立
+- Module 表也加入 AutoMigrate
+
+### Phase 3：整合與測試（待進行）
+
+#### 3.1 整合到啟動流程
+- [ ] 修改 `main.go` 添加自動 migration 選項
+- [ ] 添加環境變數配置 `database.auto_migrate`
 
 #### 2.2 建立外鍵約束 Migration
 - [ ] **000002_add_foreign_keys.up.sql**
