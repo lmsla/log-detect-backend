@@ -287,6 +287,12 @@ elasticsearch_monitors:
 **完成日期**: 2025-11-18
 **Commit**: `55a9947` - feat: Phase 3 - ES 連線管理 API 層完整實作
 
+#### 後續修復 (2025-11-22)
+- **Commit `bd981c0`**: fix: TestESConnection 自動從資料庫讀取已儲存的認證資訊
+- **Commit `fa2f13d`**: fix: UpdateESConnection 自動從資料庫讀取現有認證資訊
+
+**修復說明**：前端取得 ES 連線時返回 `ESConnectionSummary`（不含密碼），導致更新和測試 API 因缺少認證資訊而驗證失敗。修復後，這兩個 API 會在驗證前自動從資料庫讀取現有認證資訊。
+
 #### API 層
 - [x] 建立 `services/es_connection_service.go`
   - [x] GetAllESConnections - 取得所有連線
@@ -517,5 +523,5 @@ elasticsearch_monitors:
 
 ---
 
-**最後更新**: 2025-11-18
+**最後更新**: 2025-11-22
 **更新者**: Claude (AI Assistant)
