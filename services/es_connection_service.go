@@ -115,17 +115,27 @@ func UpdateESConnection(connection entities.ESConnection) models.Response {
 	res := models.Response{}
 	res.Success = false
 
-	// 驗證連線配置
-	if err := connection.Validate(); err != nil {
-		res.Msg = fmt.Sprintf("Invalid ES connection config: %s", err.Error())
-		log.Logrecord_no_rotate("ERROR", res.Msg)
-		return res
-	}
-
 	// 檢查連線是否存在
 	var existing entities.ESConnection
 	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", connection.ID).First(&existing).Error; err != nil {
 		res.Msg = fmt.Sprintf("ES connection not found: %s", err.Error())
+		log.Logrecord_no_rotate("ERROR", res.Msg)
+		return res
+	}
+
+	// 如果啟用認證但沒提供認證資訊，使用資料庫中現有的
+	if connection.EnableAuth {
+		if connection.Username == "" {
+			connection.Username = existing.Username
+		}
+		if connection.Password == "" {
+			connection.Password = existing.Password
+		}
+	}
+
+	// 驗證連線配置
+	if err := connection.Validate(); err != nil {
+		res.Msg = fmt.Sprintf("Invalid ES connection config: %s", err.Error())
 		log.Logrecord_no_rotate("ERROR", res.Msg)
 		return res
 	}
