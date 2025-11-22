@@ -16,13 +16,16 @@ require (
 
 require github.com/robfig/cron/v3 v3.0.1
 
-require github.com/golang-jwt/jwt/v5 v5.3.0
+require (
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-migrate/migrate/v4 v4.19.0
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/golang-migrate/migrate/v4 v4.19.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 )
 
 require (
