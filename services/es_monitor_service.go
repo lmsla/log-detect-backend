@@ -189,30 +189,8 @@ func DeleteESMonitor(id int) models.Response {
 	}
 }
 
-// TestESMonitorConnection 測試 ES 監控連接（使用 ElasticsearchMonitor 配置）
-func TestESMonitorConnection(monitor entities.ElasticsearchMonitor) models.Response {
-	service := NewESMonitorService()
-	result := service.CheckESHealth(monitor)
-
-	if !result.Success {
-		return models.Response{
-			Success: false,
-			Msg:     fmt.Sprintf("連接失敗: %s", result.ErrorMessage),
-			Body:    result,
-		}
-	}
-
-	return models.Response{
-		Success: true,
-		Msg:     "連接成功",
-		Body: map[string]interface{}{
-			"cluster_name":   result.ClusterName,
-			"cluster_status": result.ClusterStatus,
-			"status":         result.Status,
-			"response_time":  result.ResponseTime,
-		},
-	}
-}
+// TestESMonitorConnection 已移除
+// ES Monitor 現在使用 ESConnection，測試連線請使用 services.TestESConnection
 
 // ToggleESMonitor 啟用/停用 ES 監控
 func ToggleESMonitor(id int, enable bool) models.Response {

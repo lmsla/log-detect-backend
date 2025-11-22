@@ -126,42 +126,8 @@ func DeleteESMonitor(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// @Summary Test ES Connection
-// @Tags Elasticsearch
-// @Accept  json
-// @Produce  json
-// @Param id path int true "Monitor ID"
-// @Success 200 {object} models.Response
-// @Router /api/v1/elasticsearch/monitors/{id}/test [post]
-func TestESMonitorConnection(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-
-	// 從資料庫取得監控配置
-	monitorRes := services.GetESMonitorByID(id)
-	if !monitorRes.Success {
-		c.JSON(http.StatusNotFound, monitorRes)
-		return
-	}
-
-	monitor, ok := monitorRes.Body.(entities.ElasticsearchMonitor)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid monitor data"})
-		return
-	}
-
-	res := services.TestESMonitorConnection(monitor)
-
-	if !res.Success {
-		c.JSON(http.StatusBadRequest, res)
-		return
-	}
-
-	c.JSON(http.StatusOK, res)
-}
+// TestESMonitorConnection 已移除
+// ES Monitor 現在使用 ESConnection，測試連線請使用 /api/v1/ESConnection/Test API
 
 // @Summary Toggle ES Monitor
 // @Tags Elasticsearch

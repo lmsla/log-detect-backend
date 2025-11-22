@@ -7,25 +7,20 @@ import (
 )
 
 // ElasticsearchMonitor ES 監控配置 (存儲在 MySQL)
+// 連線配置統一使用 es_connections 表
 type ElasticsearchMonitor struct {
 	models.Common
-	ID                int      `gorm:"primaryKey;index" json:"id" form:"id"`
-	Name              string   `json:"name" gorm:"type:varchar(100);not null;comment:監控名稱"`
-	Host              string   `json:"host" gorm:"type:varchar(255);not null;comment:ES 主機地址"`
-	Port              int      `json:"port" gorm:"type:int;not null;default:9200;comment:ES 端口"`
-	Username          string   `json:"username" gorm:"type:varchar(100);comment:認證用戶名"`
-	Password          string   `json:"password" gorm:"type:varchar(255);comment:認證密碼"`
-	EnableAuth        bool     `json:"enable_auth" gorm:"type:tinyint(1);default:0;comment:是否啟用認證"`
-	CheckType         string   `json:"check_type" gorm:"type:varchar(100);default:'health,performance';comment:檢查類型(逗號分隔)"`
-	Interval          int      `json:"interval" gorm:"type:int;not null;default:60;comment:檢查間隔(秒,範圍:10-3600)"`
-	EnableMonitor     bool     `json:"enable_monitor" gorm:"type:tinyint(1);default:1;comment:是否啟用監控"`
-	Receivers         []string `json:"receivers" gorm:"type:json;serializer:json;comment:告警收件人陣列"`
-	Subject           string   `json:"subject" gorm:"type:varchar(255);comment:告警主題"`
-	Description       string   `json:"description" gorm:"type:text;comment:監控描述"`
+	ID            int      `gorm:"primaryKey;index" json:"id" form:"id"`
+	Name          string   `json:"name" gorm:"type:varchar(100);not null;comment:監控名稱"`
+	CheckType     string   `json:"check_type" gorm:"type:varchar(100);default:'health,performance';comment:檢查類型(逗號分隔)"`
+	Interval      int      `json:"interval" gorm:"type:int;not null;default:60;comment:檢查間隔(秒,範圍:10-3600)"`
+	EnableMonitor bool     `json:"enable_monitor" gorm:"type:tinyint(1);default:1;comment:是否啟用監控"`
+	Receivers     []string `json:"receivers" gorm:"type:json;serializer:json;comment:告警收件人陣列"`
+	Subject       string   `json:"subject" gorm:"type:varchar(255);comment:告警主題"`
+	Description   string   `json:"description" gorm:"type:text;comment:監控描述"`
 
-	// ES 連線配置（可選，用於複用 indices 的 ES 連線）
-	// NULL 表示使用自己的 host/port，有值表示複用指定的連線配置
-	ESConnectionID *int          `gorm:"index" json:"es_connection_id" form:"es_connection_id"`
+	// ES 連線配置（必填，統一使用 es_connections 表）
+	ESConnectionID int           `gorm:"not null;index" json:"es_connection_id" form:"es_connection_id"`
 	ESConnection   *ESConnection `gorm:"foreignKey:ESConnectionID" json:"es_connection,omitempty"`
 
 	// 告警閾值配置（獨立欄位，前端友好）
@@ -147,7 +142,9 @@ type ESAlertHistory = ESAlert
 type ESMonitorStatus struct {
 	MonitorID        int       `json:"monitor_id"`
 	MonitorName      string    `json:"monitor_name"`
-	Host             string    `json:"host"`
+	ESConnectionID   int       `json:"es_connection_id"`
+	ESConnectionName string    `json:"es_connection_name"`
+	Host             string    `json:"host"` // 從 ESConnection 取得，方便前端顯示
 	Status           string    `json:"status"` // online, offline, warning, error
 	ClusterStatus    string    `json:"cluster_status"` // green, yellow, red
 	ClusterName      string    `json:"cluster_name"`
