@@ -32,15 +32,25 @@ func main() {
 
 	utils.LoadEnvironment()
 
+	// 連接 MySQL
+	fmt.Println("Connecting to MySQL...")
 	clients.LoadDatabase()
-	mysql, _ := global.Mysql.DB()
+	mysql, err := global.Mysql.DB()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Failed to get MySQL connection: %v\n", err)
+		os.Exit(1)
+	}
 	defer mysql.Close()
+	fmt.Println("✅ MySQL connected")
 
 	// 初始化 TimescaleDB
+	fmt.Println("Connecting to TimescaleDB...")
 	if err := clients.LoadTimescaleDB(); err != nil {
-		log.Fatalf("Failed to initialize TimescaleDB: %v", err)
+		fmt.Fprintf(os.Stderr, "❌ Failed to initialize TimescaleDB: %v\n", err)
+		os.Exit(1)
 	}
 	defer global.TimescaleDB.Close()
+	fmt.Println("✅ TimescaleDB connected")
 
 	// 初始化批量寫入服務
 	if global.EnvConfig.BatchWriter.Enabled {
