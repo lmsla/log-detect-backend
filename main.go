@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"log-detect/clients"
@@ -56,9 +58,12 @@ func main() {
 	}
 
 	// 執行資料庫 migrations
+	fmt.Println("Starting migrations...")
 	if err := services.RunMigrations(); err != nil {
-		log.Fatalf("Database migration failed: %v", err)
+		fmt.Fprintf(os.Stderr, "❌ Database migration failed: %v\n", err)
+		os.Exit(1)
 	}
+	fmt.Println("✅ Migrations completed")
 
 	// Initialize ES client after tables are created
 	clients.SetElkClient()
