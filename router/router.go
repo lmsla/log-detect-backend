@@ -164,7 +164,7 @@ func LoadRouter() *gin.Engine {
 		esGroup.DELETE("/monitors/:id", controller.DeleteESMonitor).Use(middleware.PermissionMiddleware("elasticsearch", "delete"))
 
 		// Monitor operations
-		esGroup.POST("/monitors/:id/test", controller.TestESConnection)
+		esGroup.POST("/monitors/:id/test", controller.TestESMonitorConnection)
 		esGroup.POST("/monitors/:id/toggle", controller.ToggleESMonitor).Use(middleware.PermissionMiddleware("elasticsearch", "update"))
 
 		// Monitor status and statistics

@@ -189,8 +189,8 @@ func DeleteESMonitor(id int) models.Response {
 	}
 }
 
-// TestESConnection 測試 ES 連接
-func TestESConnection(monitor entities.ElasticsearchMonitor) models.Response {
+// TestESMonitorConnection 測試 ES 監控連接（使用 ElasticsearchMonitor 配置）
+func TestESMonitorConnection(monitor entities.ElasticsearchMonitor) models.Response {
 	service := NewESMonitorService()
 	result := service.CheckESHealth(monitor)
 

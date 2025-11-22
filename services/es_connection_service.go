@@ -231,7 +231,6 @@ func TestESConnection(connection entities.ESConnection) models.Response {
 	}
 
 	// 建立臨時客戶端進行測試
-	manager := GetESConnectionManager()
 	testClient, err := createTestClient(&connection)
 	if err != nil {
 		res.Msg = fmt.Sprintf("Failed to create test client: %s", err.Error())
