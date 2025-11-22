@@ -55,8 +55,10 @@ func main() {
 		log.Println("✅ BatchWriter initialized successfully")
 	}
 
-	// Create tables first before initializing ES client (es_connections table must exist)
-	services.CreateTable()
+	// 執行資料庫 migrations
+	if err := services.RunMigrations(); err != nil {
+		log.Fatalf("Database migration failed: %v", err)
+	}
 
 	// Initialize ES client after tables are created
 	clients.SetElkClient()
