@@ -125,22 +125,16 @@ func (m *ESConnectionManager) GetClientForIndex(indexID int) (*elasticsearch.Cli
 	return m.GetDefaultClient(), nil
 }
 
-// GetClientForMonitor 為指定的 ElasticsearchMonitor 取得對應的 ES 客戶端（Phase 4 使用）
+// GetClientForMonitor 為指定的 ElasticsearchMonitor 取得對應的 ES 客戶端
 func (m *ESConnectionManager) GetClientForMonitor(monitorID int) (*elasticsearch.Client, error) {
 	var monitor entities.ElasticsearchMonitor
 	if err := global.Mysql.Preload("ESConnection").First(&monitor, monitorID).Error; err != nil {
 		return nil, fmt.Errorf("failed to load monitor %d: %w", monitorID, err)
 	}
 
-	// 如果 Monitor 指定了 ES 連線，使用該連線（複用 indices 的連線）
-	if monitor.ESConnectionID != nil {
-		log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d reusing ES connection %d", monitorID, *monitor.ESConnectionID))
-		return m.GetClient(*monitor.ESConnectionID)
-	}
-
-	// 否則返回 nil，表示應該使用 Monitor 自己的 host/port 配置
-	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d using its own host/port configuration", monitorID))
-	return nil, nil
+	// ESConnectionID 現在是必填，直接使用
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d using ES connection %d", monitorID, monitor.ESConnectionID))
+	return m.GetClient(monitor.ESConnectionID)
 }
 
 // GetDefaultClient 取得預設客戶端
