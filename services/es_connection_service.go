@@ -224,6 +224,18 @@ func TestESConnection(connection entities.ESConnection) models.Response {
 	res := models.Response{}
 	res.Success = false
 
+	// 如果有 ID 且啟用認證但缺少密碼，從資料庫讀取
+	if connection.ID > 0 && connection.EnableAuth && connection.Password == "" {
+		var existing entities.ESConnection
+		if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", connection.ID).First(&existing).Error; err == nil {
+			// 使用資料庫中的 username 和 password（如果前端沒提供）
+			if connection.Username == "" {
+				connection.Username = existing.Username
+			}
+			connection.Password = existing.Password
+		}
+	}
+
 	// 驗證連線配置
 	if err := connection.Validate(); err != nil {
 		res.Msg = fmt.Sprintf("Invalid ES connection config: %s", err.Error())
