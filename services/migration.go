@@ -174,8 +174,10 @@ func executeSQL(db *sql.DB, sqlContent string) error {
 	statements := splitSQL(sqlContent)
 
 	for _, stmt := range statements {
+		// 移除 SQL 註釋行（-- 開頭的行）
+		stmt = removeComments(stmt)
 		stmt = strings.TrimSpace(stmt)
-		if stmt == "" || strings.HasPrefix(stmt, "--") {
+		if stmt == "" {
 			continue
 		}
 		if _, err := db.Exec(stmt); err != nil {
@@ -184,6 +186,20 @@ func executeSQL(db *sql.DB, sqlContent string) error {
 	}
 
 	return nil
+}
+
+// removeComments 移除 SQL 中的單行註釋（-- 開頭的行）
+func removeComments(sql string) string {
+	lines := strings.Split(sql, "\n")
+	var result []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		result = append(result, line)
+	}
+	return strings.Join(result, "\n")
 }
 
 // splitSQL 分割 SQL 語句
