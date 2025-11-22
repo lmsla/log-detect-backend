@@ -55,10 +55,11 @@ func main() {
 		log.Println("✅ BatchWriter initialized successfully")
 	}
 
-	clients.SetElkClient()
-
-	// Create tables first before initializing authentication
+	// Create tables first before initializing ES client (es_connections table must exist)
 	services.CreateTable()
+
+	// Initialize ES client after tables are created
+	clients.SetElkClient()
 
 	// Initialize authentication system (create default roles and admin user)
 	authService := services.NewAuthService()
