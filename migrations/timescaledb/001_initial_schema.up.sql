@@ -47,3 +47,8 @@ CREATE TABLE IF NOT EXISTS es_alerts (
     acknowledged_by VARCHAR(100),
     metadata JSONB
 );
+
+-- 轉換為 TimescaleDB Hypertable（如果尚未轉換）
+-- 使用 if_not_exists 避免重複執行錯誤
+SELECT create_hypertable('es_metrics', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('es_alerts', 'time', if_not_exists => TRUE);
