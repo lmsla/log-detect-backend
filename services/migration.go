@@ -93,8 +93,8 @@ func executeMigrations(db *sql.DB, migrationsDir string, dbName string) error {
 			return fmt.Errorf("failed to execute migration %s: %w", file, err)
 		}
 
-		// 記錄已執行
-		if err := recordMigration(db, version); err != nil {
+		// 記錄已執行（根據資料庫類型使用不同的 placeholder）
+		if err := recordMigration(db, version, dbName); err != nil {
 			return fmt.Errorf("failed to record migration %s: %w", file, err)
 		}
 
@@ -221,8 +221,16 @@ func splitSQL(content string) []string {
 }
 
 // recordMigration 記錄已執行的 migration
-func recordMigration(db *sql.DB, version string) error {
-	_, err := db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version)
+func recordMigration(db *sql.DB, version string, dbType string) error {
+	var query string
+	if dbType == "timescaledb" {
+		// PostgreSQL 使用 $1 placeholder
+		query = "INSERT INTO schema_migrations (version) VALUES ($1)"
+	} else {
+		// MySQL 使用 ? placeholder
+		query = "INSERT INTO schema_migrations (version) VALUES (?)"
+	}
+	_, err := db.Exec(query, version)
 	return err
 }
 
