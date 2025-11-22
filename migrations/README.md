@@ -6,16 +6,18 @@
 
 ```
 migrations/
-├── mysql/                              # MySQL migrations
-│   ├── 001_initial_schema.up.sql       # 建立所有表
-│   └── 001_initial_schema.down.sql     # 回滾用
-└── timescaledb/                        # TimescaleDB migrations (一表一檔)
-    ├── 001_device_metrics.up.sql       # 設備監控指標表
-    ├── 001_device_metrics.down.sql
-    ├── 002_es_metrics.up.sql           # ES 監控指標表
-    ├── 002_es_metrics.down.sql
-    ├── 003_es_alert_history.up.sql     # ES 告警歷史表
-    └── 003_es_alert_history.down.sql
+├── mysql/                                    # MySQL migrations (按類別分檔)
+│   ├── 001_users_and_permissions.up.sql      # 用戶與權限
+│   ├── 002_es_connections.up.sql             # ES 連線配置
+│   ├── 003_devices.up.sql                    # 裝置監控相關
+│   ├── 004_histories.up.sql                  # 歷史記錄
+│   ├── 005_cron_lists.up.sql                 # 排程管理
+│   ├── 006_elasticsearch_monitors.up.sql     # ES 監控配置
+│   └── 007_modules.up.sql                    # 系統模組
+└── timescaledb/                              # TimescaleDB migrations (一表一檔)
+    ├── 001_device_metrics.up.sql             # 設備監控指標表
+    ├── 002_es_metrics.up.sql                 # ES 監控指標表
+    └── 003_es_alert_history.up.sql           # ES 告警歷史表
 ```
 
 ## TimescaleDB 表格清單
