@@ -1638,68 +1638,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/elasticsearch/monitors/{id}/test:
-    post:
-      tags:
-        - Elasticsearch Monitoring
-      summary: Test ES Connection
-      description: Test connection to an existing Elasticsearch monitor configuration
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Monitor ID
-      responses:
-        '200':
-          description: Connection test successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  msg:
-                    type: string
-                    example: "連接成功"
-                  body:
-                    type: object
-                    properties:
-                      cluster_name:
-                        type: string
-                        example: "production-es"
-                      cluster_status:
-                        type: string
-                        example: "green"
-                      status:
-                        type: string
-                        example: "online"
-                      response_time:
-                        type: integer
-                        example: 45
-        '400':
-          description: Connection failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Monitor not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  # /api/v1/elasticsearch/monitors/{id}/test 已移除
+  # 測試 ES 連線請使用 /api/v1/ESConnection/Test
 
   /api/v1/elasticsearch/monitors/{id}/toggle:
     post:
@@ -2749,6 +2689,7 @@ components:
         - is_default
 
     # Elasticsearch Monitor schemas
+    # 連線配置統一使用 es_connections 表，不再維護獨立的 host/port/auth
     ElasticsearchMonitor:
       allOf:
         - $ref: '#/components/schemas/CommonFields'
@@ -2762,28 +2703,12 @@ components:
               type: string
               description: Monitor name
               example: "Production ES Cluster"
-            host:
-              type: string
-              description: Elasticsearch host address
-              example: "es.example.com"
-            port:
+            es_connection_id:
               type: integer
-              description: Elasticsearch port
-              example: 9200
-              default: 9200
-            username:
-              type: string
-              description: Authentication username
-              example: "monitor_user"
-            password:
-              type: string
-              description: Authentication password
-              example: "secure_password"
-            enable_auth:
-              type: boolean
-              description: Enable authentication
-              example: true
-              default: false
+              description: ES 連線 ID（外鍵到 es_connections）
+              example: 1
+            es_connection:
+              $ref: '#/components/schemas/ESConnectionSummary'
             check_type:
               type: string
               description: Check types (comma-separated)
@@ -2822,7 +2747,7 @@ components:
               example: '{"cpu_usage_high":75.0,"memory_usage_high":80.0}'
           required:
             - name
-            - host
+            - es_connection_id
 
     ESMonitorStatus:
       type: object
@@ -2835,9 +2760,17 @@ components:
           type: string
           description: Monitor name
           example: "Production ES"
+        es_connection_id:
+          type: integer
+          description: ES 連線 ID
+          example: 1
+        es_connection_name:
+          type: string
+          description: ES 連線名稱
+          example: "Production Cluster"
         host:
           type: string
-          description: Host and port
+          description: Host and port (從 ESConnection 取得)
           example: "es.example.com:9200"
         status:
           type: string
