@@ -22,10 +22,11 @@ func ExecuteCrontab(target_id int, index_id int, cronjob string, index string, f
 
 	EntryID, err := global.Crontab.AddFunc(cronjob, func() {
 		execute_time := time.Now()
-		Detect(execute_time, index, field, period, unit, receiver, subject, logname, device_group)
+		// 傳入 index_id 以使用對應的 ES 連線
+		Detect(execute_time, index_id, index, field, period, unit, receiver, subject, logname, device_group)
 	})
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR",fmt.Sprintf("Crontab AddFunc error: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Crontab AddFunc error: %s", err.Error()))
 	}
 
 	// fmt.Println("EntryID", EntryID)
@@ -38,7 +39,7 @@ func ExecuteCrontab(target_id int, index_id int, cronjob string, index string, f
 	cronlist := entities.CronList{TargetID: target_id, IndexID: index_id, EntryID: int(EntryID)}
 	result := global.Mysql.Create(&cronlist).Error
 	if result != nil {
-		log.Logrecord_no_rotate("ERROR",fmt.Sprintf("cronlist Create error: %s",result.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("cronlist Create error: %s", result.Error()))
 	}
 
 	if err != nil {
@@ -57,26 +58,32 @@ func Control_center() {
 
 	targets, err := GetAllTargetsData()
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data error: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data error: %s", err.Error()))
 	}
 
 	if err := global.Mysql.Exec("TRUNCATE TABLE cron_lists").Error; err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error when truncate cronlist table: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error when truncate cronlist table: %s", err.Error()))
 	}
 
 	var cronjob string
 	for _, target := range targets {
-		for _, index := range target.Indices {
-				// var cronjob string
-				if index.Period == "minutes" {
-					cronjob = fmt.Sprintf("*/%v * * * *", index.Unit)
+		// 檢查 Target 是否啟用
+		if !target.Enable {
+			log.Logrecord_no_rotate("INFO", fmt.Sprintf("Target '%s' is disabled, skipping initialization", target.Subject))
+			continue
+		}
 
-				} else if index.Period == "hours" {
-					cronjob = fmt.Sprintf("0 */%v * * *", index.Unit)
-				}
-				// fmt.Println("crontab", cronjob)
-				// Detect(index.Pattern, index.Field, index.Period, index.Unit, target.To, target.Subject, index.Logname, index.DeviceGroup)
-				ExecuteCrontab(target.ID, index.ID, cronjob, index.Pattern, index.Field, index.Period, index.Unit, target.To, target.Subject, index.Logname, index.DeviceGroup)
+		for _, index := range target.Indices {
+			// var cronjob string
+			if index.Period == "minutes" {
+				cronjob = fmt.Sprintf("*/%v * * * *", index.Unit)
+
+			} else if index.Period == "hours" {
+				cronjob = fmt.Sprintf("0 */%v * * *", index.Unit)
+			}
+			// fmt.Println("crontab", cronjob)
+			// Detect(index.Pattern, index.Field, index.Period, index.Unit, target.To, target.Subject, index.Logname, index.DeviceGroup)
+			ExecuteCrontab(target.ID, index.ID, cronjob, index.Pattern, index.Field, index.Period, index.Unit, target.To, target.Subject, index.Logname, index.DeviceGroup)
 
 		}
 	}
@@ -86,8 +93,15 @@ func Control_center_by_TargetID(targetID int) {
 
 	target, err := GetTargetByID(targetID)
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data erro: %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data erro: %s", err.Error()))
 	}
+
+	// 檢查 Target 是否啟用
+	if !target.Enable {
+		log.Logrecord_no_rotate("INFO", fmt.Sprintf("Target '%s' is disabled, skipping cron job creation", target.Subject))
+		return
+	}
+
 	// if err := global.Mysql.Exec("TRUNCATE TABLE cron_lists").Error; err != nil {
 	// 	log.Logrecord_no_rotate("ERROR", "error when truncate cronlist table")
 	// }
@@ -113,10 +127,16 @@ func Control_center_by_TargetID(targetID int) {
 func Control_center_by_IndiceID(indicesID int, targetdata entities.IndicesTargets) {
 
 	var cronjob string
-	
-	target,err := GetTargetByID(targetdata.TargetID)
+
+	target, err := GetTargetByID(targetdata.TargetID)
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data error (Control_center_by_IndiceID - GetTargetByID): %s",err.Error()))
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("get targets data error (Control_center_by_IndiceID - GetTargetByID): %s", err.Error()))
+	}
+
+	// 檢查 Target 是否啟用
+	if !target.Enable {
+		log.Logrecord_no_rotate("INFO", fmt.Sprintf("Target '%s' is disabled, skipping index cron job creation", target.Subject))
+		return
 	}
 	for _, index := range target.Indices {
 		if index.ID == indicesID {
