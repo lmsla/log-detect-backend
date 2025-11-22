@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS es_alert_history CASCADE;

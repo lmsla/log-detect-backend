@@ -9,9 +9,13 @@ migrations/
 ├── mysql/                              # MySQL migrations
 │   ├── 001_initial_schema.up.sql       # 建立所有表
 │   └── 001_initial_schema.down.sql     # 回滾用
-└── timescaledb/                        # TimescaleDB migrations
-    ├── 001_initial_schema.up.sql       # 建立時序表
-    └── 001_initial_schema.down.sql     # 回滾用
+└── timescaledb/                        # TimescaleDB migrations (一表一檔)
+    ├── 001_device_metrics.up.sql       # 設備監控指標表
+    ├── 001_device_metrics.down.sql
+    ├── 002_es_metrics.up.sql           # ES 監控指標表
+    ├── 002_es_metrics.down.sql
+    ├── 003_es_alert_history.up.sql     # ES 告警歷史表
+    └── 003_es_alert_history.down.sql
 ```
 
 ## TimescaleDB 表格清單
