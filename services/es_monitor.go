@@ -95,32 +95,63 @@ func (s *ESMonitorService) CheckESHealth(monitor entities.ElasticsearchMonitor) 
 	return result
 }
 
+// getESConnection 從資料庫取得 ES 連線配置
+func (s *ESMonitorService) getESConnection(monitor entities.ElasticsearchMonitor) (*entities.ESConnection, error) {
+	// 優先使用已載入的 ESConnection
+	if monitor.ESConnection != nil {
+		return monitor.ESConnection, nil
+	}
+
+	// 從資料庫讀取
+	var conn entities.ESConnection
+	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", monitor.ESConnectionID).First(&conn).Error; err != nil {
+		return nil, fmt.Errorf("ES connection not found: %w", err)
+	}
+	return &conn, nil
+}
+
 // getClusterHealth 獲取集群健康狀態
 func (s *ESMonitorService) getClusterHealth(monitor entities.ElasticsearchMonitor) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s:%d/_cluster/health", monitor.Host, monitor.Port)
-	return s.makeRequest(monitor, "GET", url, nil)
+	conn, err := s.getESConnection(monitor)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/_cluster/health", conn.GetURL())
+	return s.makeRequest(conn, "GET", url, nil)
 }
 
 // getNodeStats 獲取節點統計信息
 func (s *ESMonitorService) getNodeStats(monitor entities.ElasticsearchMonitor) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s:%d/_nodes/stats/os,jvm,fs,indices", monitor.Host, monitor.Port)
-	return s.makeRequest(monitor, "GET", url, nil)
+	conn, err := s.getESConnection(monitor)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/_nodes/stats/os,jvm,fs,indices", conn.GetURL())
+	return s.makeRequest(conn, "GET", url, nil)
 }
 
 // getClusterStats 獲取集群統計信息
 func (s *ESMonitorService) getClusterStats(monitor entities.ElasticsearchMonitor) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s:%d/_cluster/stats", monitor.Host, monitor.Port)
-	return s.makeRequest(monitor, "GET", url, nil)
+	conn, err := s.getESConnection(monitor)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/_cluster/stats", conn.GetURL())
+	return s.makeRequest(conn, "GET", url, nil)
 }
 
 // getIndicesStats 獲取索引統計信息
 func (s *ESMonitorService) getIndicesStats(monitor entities.ElasticsearchMonitor) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s:%d/_stats", monitor.Host, monitor.Port)
-	return s.makeRequest(monitor, "GET", url, nil)
+	conn, err := s.getESConnection(monitor)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/_stats", conn.GetURL())
+	return s.makeRequest(conn, "GET", url, nil)
 }
 
 // makeRequest 發送 HTTP 請求到 ES
-func (s *ESMonitorService) makeRequest(monitor entities.ElasticsearchMonitor, method, url string, body interface{}) (map[string]interface{}, error) {
+func (s *ESMonitorService) makeRequest(conn *entities.ESConnection, method, url string, body interface{}) (map[string]interface{}, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -137,9 +168,9 @@ func (s *ESMonitorService) makeRequest(monitor entities.ElasticsearchMonitor, me
 
 	req.Header.Set("Content-Type", "application/json")
 
-	// 添加認證
-	if monitor.EnableAuth {
-		req.SetBasicAuth(monitor.Username, monitor.Password)
+	// 添加認證（從 ESConnection 取得）
+	if conn.EnableAuth {
+		req.SetBasicAuth(conn.Username, conn.Password)
 	}
 
 	resp, err := s.client.Do(req)
