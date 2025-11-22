@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log-detect/entities"
-	"time"
-	// "log"
-	"log-detect/clients"
+	"log-detect/global"
 	"log-detect/log"
+	"time"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
@@ -60,5 +60,5 @@ func Insert_HistoryDataWithClient(esClient *elasticsearch.Client, historyData en
 
 // Insert_HistoryData 使用預設 ES 客戶端插入歷史資料（向後兼容）
 func Insert_HistoryData(historyData entities.History) {
-	Insert_HistoryDataWithClient(clients.ES, historyData)
+	Insert_HistoryDataWithClient(global.Elasticsearch, historyData)
 }

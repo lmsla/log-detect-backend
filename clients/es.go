@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	"log-detect/global"
 	"log-detect/log"
 	"log-detect/services"
 )
@@ -30,6 +31,9 @@ func SetElkClient() {
 
 	// 取得預設客戶端
 	ES = manager.GetDefaultClient()
+
+	// 同時設定 global.Elasticsearch（供其他 package 使用，避免 import cycle）
+	global.Elasticsearch = ES
 
 	if ES == nil {
 		log.Logrecord_no_rotate("WARNING", "Default ES client is nil after initialization")
