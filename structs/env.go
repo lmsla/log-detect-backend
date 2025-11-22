@@ -2,6 +2,8 @@ package structs
 
 type EnviromentModel struct {
 	Database    database
+	Timescale   timescale    // 新增 TimescaleDB 配置
+	BatchWriter batchWriter  // 新增批量寫入配置
 	Server      server
 	ES          es
 	LIST        list
@@ -70,4 +72,24 @@ type corsAllowModel struct {
 type server struct {
 	Port string
 	Mode string
+}
+
+// TimescaleDB 配置結構
+type timescale struct {
+	Host        string `mapstructure:"host"`
+	Port        string `mapstructure:"port"`
+	User        string `mapstructure:"user"`
+	Password    string `mapstructure:"password"`
+	Db          string `mapstructure:"name"`
+	MaxIdle     uint   `mapstructure:"max_idle"`
+	MaxLifeTime string `mapstructure:"max_life_time"`
+	MaxOpenConn uint   `mapstructure:"max_open_conn"`
+	SSLMode     string `mapstructure:"sslmode"`
+}
+
+// 批量寫入配置結構
+type batchWriter struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	BatchSize     int    `mapstructure:"batch_size"`
+	FlushInterval string `mapstructure:"flush_interval"`
 }

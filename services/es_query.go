@@ -2,18 +2,20 @@ package services
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"log-detect/clients"
-	"log-detect/log"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log-detect/global"
+	"log-detect/log"
+	"strings"
+
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
 
 
-//dsl 比實際時間再減八小時
-func SearchRequest(index string, field string, timefrom string, timeto string) Search_Request {
+// SearchRequestWithClient 使用指定的 ES 客戶端執行查詢（支援多連線）
+func SearchRequestWithClient(esClient *elasticsearch.Client, index string, field string, timefrom string, timeto string) Search_Request {
 	querybody := fmt.Sprintf(`{
 		"aggs": {
 		  "2": {
@@ -66,7 +68,7 @@ func SearchRequest(index string, field string, timefrom string, timeto string) S
 		Index: []string{index},
 		Body:  strings.NewReader(querybody),
 	}
-	res, err := req.Do(context.Background(), clients.ES)
+	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("es connect error: %s", err.Error()))
 
@@ -84,6 +86,12 @@ func SearchRequest(index string, field string, timefrom string, timeto string) S
 
 	// fmt.Println(resString)
 	return s
+}
+
+// SearchRequest 使用預設 ES 客戶端執行查詢（向後兼容）
+// dsl 比實際時間再減八小時
+func SearchRequest(index string, field string, timefrom string, timeto string) Search_Request {
+	return SearchRequestWithClient(global.Elasticsearch, index, field, timefrom, timeto)
 }
 
 

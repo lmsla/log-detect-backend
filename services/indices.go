@@ -148,9 +148,9 @@ func GetAllIndices() models.Response {
 
 	res := models.Response{}
 	res.Success = false
-	res.Body = []models.Index{}
+	res.Body = []entities.Index{}
 
-	err := global.Mysql.Find(&res.Body).Error
+	err := global.Mysql.Preload("ESConnection").Find(&res.Body).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Get All Indices err: %s", err.Error()))
 		res.Msg = fmt.Sprintf("Get All Indices err: %s", err.Error())
@@ -167,7 +167,7 @@ func GetIndicesByTargetID(TargetID int) ([]entities.Index, error) {
 
 	target := entities.Target{}
 
-	err := global.Mysql.Debug().Where("id = ?", TargetID).Preload("Indices").Find(&target).Error
+	err := global.Mysql.Debug().Where("id = ?", TargetID).Preload("Indices.ESConnection").Find(&target).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Get Indices By TargetID err: %s", err.Error()))
 		return nil, err

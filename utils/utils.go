@@ -72,8 +72,6 @@ func viperSettingToModel() {
 	config.SSO.DefaultSetting.Role = viper.GetString("sso.default_setting.role")
 	config.SSO.DefaultSetting.Group = viper.GetString("sso.default_setting.group")
 
-
-
 	// SQL Database
 	config.Database.Client = viper.GetString("database.client")
 	config.Database.Host = viper.GetString("database.host")
@@ -88,6 +86,23 @@ func viperSettingToModel() {
 	config.Database.LogEnable = viper.GetInt("database.log_enable")
 	config.Database.Migration = viper.GetBool("database.migration")
 
+	// TimescaleDB
+	config.Timescale.Host = viper.GetString("timescale.host")
+	config.Timescale.Port = viper.GetString("timescale.port")
+	config.Timescale.User = viper.GetString("timescale.user")
+	config.Timescale.Password = viper.GetString("timescale.password")
+	config.Timescale.Db = viper.GetString("timescale.name")
+	config.Timescale.MaxIdle = uint(viper.GetInt("timescale.max_idle"))
+
+	config.Timescale.MaxOpenConn = uint(viper.GetInt("timescale.max_open_conn"))
+	config.Timescale.MaxLifeTime = viper.GetString("timescale.max_life_time")
+	config.Timescale.SSLMode = viper.GetString("timescale.sslmode")
+
+	// BatchWriter
+	config.BatchWriter.Enabled = viper.GetBool("batch_writer.enabled")
+
+	config.BatchWriter.BatchSize = viper.GetInt("batch_writer.batch_size")
+	config.BatchWriter.FlushInterval = viper.GetString("batch_writer.flush_interval")
 
 	config.Cors.Allow.Headers = viper.GetStringSlice("cors.allow.headers")
 

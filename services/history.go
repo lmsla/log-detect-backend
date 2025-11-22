@@ -16,6 +16,11 @@ func CreateHistory(hisroty entities.History) models.Response {
 	res.Success = false
 	res.Body = entities.Index{}
 
+	// Ensure metadata has valid JSON
+	if hisroty.Metadata == "" {
+		hisroty.Metadata = "{}"
+	}
+
 	err := global.Mysql.Create(&hisroty).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Create history Fail: %s", err.Error()))
@@ -28,7 +33,6 @@ func CreateHistory(hisroty entities.History) models.Response {
 
 	return res
 }
-
 
 // 新增 mail history
 func CreateMailHistory(mail_hisroty entities.MailHistory) models.Response {
@@ -49,9 +53,6 @@ func CreateMailHistory(mail_hisroty entities.MailHistory) models.Response {
 	return res
 }
 
-
-
-
 func GetIndicesDataByLogname(logname string) (entities.Index, error) {
 
 	indices := entities.Index{}
@@ -65,12 +66,7 @@ func GetIndicesDataByLogname(logname string) (entities.Index, error) {
 
 // 以 logname , device name 查詢歷史紀錄
 func GetHistoryDataByDeviceName(logname string, name string) []entities.History {
-	histories := []entities.History{}
-	date := time.Now().Format("2006-01-02")
-	if err := global.Mysql.Where("logname = ? AND name = ? AND date = ?", logname, name, date).Find(&histories).Error; err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Get History Data By DeviceName error: %s", err.Error()))
-	}
-	return histories
+	return GetHistoryDataByDeviceName_TS(logname, name)
 }
 
 func GenerateTimeArray(period string, unit int) []string {
@@ -154,57 +150,11 @@ func DataDealing(logname string) models.Response {
 }
 
 func CheckLogstatus(logname string) entities.LognameCheck {
-	histories := []entities.History{}
-	indices := entities.Index{}
-
-	var logcheck entities.LognameCheck
-
-	// Check indices 
-	index_err := global.Mysql.Debug().Where("logname = ?", logname).Find(&indices).Error
-	if index_err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find indices data error: %s", index_err.Error()))
-	}
-
-	now := time.Now()
-
-	lastCrontabTime := GetLastCrontabTime(now, indices.Period, indices.Unit)
-
-	date := now.Format("2006-01-02")
-	
-	fmt.Println("lastCrontabTime",lastCrontabTime)
-	err := global.Mysql.Debug().Where("logname = ? AND date=? AND time =?", logname ,date,lastCrontabTime).Find(&histories).Error
-	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find history data error: %s", index_err.Error()))
-	}
-
-	if len(histories) == 0 {
-		logcheck = entities.LognameCheck{Name: logname, Lost: "true"}
-	} else {
-		logcheck = entities.LognameCheck{Name: logname, Lost: "false"}
-	}
-	return logcheck
+	return CheckLogstatus_TS(logname)
 }
 
 func GetLognameData() models.Response {
-	res := models.Response{}
-	res.Success = false
-	var lognames []string
-	chcekResults := []entities.LognameCheck{}
-	
-	// 取出 history table 中的 logname
-	if err := global.Mysql.Table("logdetect.histories").Select("distinct logname").Find(&lognames).Error; err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("failed to fetch lognames error: %s", err.Error()))
-	}
-
-	for _, name := range lognames {
-
-		chcekResult := CheckLogstatus(name)
-		chcekResults = append(chcekResults, chcekResult)
-	}
-	res.Body = chcekResults
-	res.Success = true
-	return res
-
+	return GetLognameData_TS()
 }
 
 func GetLastCrontabTime(now time.Time, period string, unit int) string {
@@ -227,4 +177,225 @@ func GetLastCrontabTime(now time.Time, period string, unit int) string {
 	}
 
 	return lastCrontabTime
+}
+
+// GetDashboardData 獲取儀表板數據
+func GetDashboardData() models.Response {
+	return GetDashboardData_TS()
+}
+
+// GetHistoryStatistics 獲取歷史統計數據
+func GetHistoryStatistics(logname, deviceGroup string, startDate, endDate string) models.Response {
+	return GetHistoryStatistics_TS(logname, deviceGroup, startDate, endDate)
+}
+
+// GetDeviceTimeline 獲取設備時間線數據
+func GetDeviceTimeline(deviceName, logname string, days int) models.Response {
+	return GetDeviceTimeline_TS(deviceName, logname, days)
+}
+
+// GetTrendData 獲取趨勢數據
+func GetTrendData(logname, deviceGroup string, days int) models.Response {
+	return GetTrendData_TS(logname, deviceGroup, days)
+}
+
+// GetGroupStatistics 獲取群組統計
+func GetGroupStatistics(logname string) models.Response {
+	return GetGroupStatistics_TS(logname)
+}
+
+// CreateAlertHistory 創建告警歷史
+func CreateAlertHistory(alert entities.AlertHistory) models.Response {
+	res := models.Response{}
+	res.Success = false
+
+	if err := global.Mysql.Create(&alert).Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Create alert history failed: %s", err.Error()))
+		res.Msg = "Create alert history failed"
+		return res
+	}
+
+	res.Success = true
+	res.Body = alert
+	res.Msg = "Create alert history success"
+	return res
+}
+
+// 數據清理和歸檔策略
+
+// CleanOldHistory 清理舊的歷史記錄
+func CleanOldHistory(days int) models.Response {
+	res := models.Response{}
+	res.Success = false
+
+	// 計算截止日期
+	cutoffDate := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
+
+	// 刪除舊記錄
+	result := global.Mysql.Where("date < ?", cutoffDate).Delete(&entities.History{})
+	if result.Error != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to clean old history: %s", result.Error.Error()))
+		res.Msg = "Clean old history failed"
+		return res
+	}
+
+	res.Success = true
+	res.Msg = fmt.Sprintf("Cleaned %d old history records", result.RowsAffected)
+	return res
+}
+
+// ArchiveOldHistory 將舊記錄歸檔到歷史表
+func ArchiveOldHistory(days int) models.Response {
+	res := models.Response{}
+	res.Success = false
+
+	// 計算截止日期
+	cutoffDate := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
+
+	// 開始事務
+	tx := global.Mysql.Begin()
+
+	// 將舊記錄複製到歷史歸檔表
+	archiveSQL := `
+		INSERT INTO history_archives
+		SELECT * FROM histories
+		WHERE date < ?
+	`
+	if err := tx.Exec(archiveSQL, cutoffDate).Error; err != nil {
+		tx.Rollback()
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to archive old history: %s", err.Error()))
+		res.Msg = "Archive old history failed"
+		return res
+	}
+
+	// 刪除已歸檔的記錄
+	if err := tx.Where("date < ?", cutoffDate).Delete(&entities.History{}).Error; err != nil {
+		tx.Rollback()
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to delete archived records: %s", err.Error()))
+		res.Msg = "Delete archived records failed"
+		return res
+	}
+
+	// 提交事務
+	if err := tx.Commit().Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to commit archive transaction: %s", err.Error()))
+		res.Msg = "Commit archive transaction failed"
+		return res
+	}
+
+	res.Success = true
+	res.Msg = "History archive completed successfully"
+	return res
+}
+
+// CreateDailyAggregates 生成每日統計匯總
+func CreateDailyAggregates(targetDate string) models.Response {
+	res := models.Response{}
+	res.Success = false
+
+	if targetDate == "" {
+		targetDate = time.Now().AddDate(0, 0, -1).Format("2006-01-02") // 昨天
+	}
+
+	// 插入或更新每日統計
+	aggregateSQL := `
+		INSERT INTO history_daily_stats (
+			date, logname, device_group,
+			total_checks, online_count, offline_count, warning_count, error_count,
+			uptime_rate, avg_response_time
+		)
+		SELECT
+			date,
+			logname,
+			device_group,
+			COUNT(*) as total_checks,
+			SUM(CASE WHEN status = 'online' THEN 1 ELSE 0 END) as online_count,
+			SUM(CASE WHEN status = 'offline' THEN 1 ELSE 0 END) as offline_count,
+			SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) as warning_count,
+			SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+			ROUND(
+				(SUM(CASE WHEN status = 'online' THEN 1 ELSE 0 END) * 100.0) / COUNT(*),
+				2
+			) as uptime_rate,
+			ROUND(AVG(response_time), 2) as avg_response_time
+		FROM histories
+		WHERE date = ?
+		GROUP BY date, logname, device_group
+		ON DUPLICATE KEY UPDATE
+			total_checks = VALUES(total_checks),
+			online_count = VALUES(online_count),
+			offline_count = VALUES(offline_count),
+			warning_count = VALUES(warning_count),
+			error_count = VALUES(error_count),
+			uptime_rate = VALUES(uptime_rate),
+			avg_response_time = VALUES(avg_response_time)
+	`
+
+	if err := global.Mysql.Exec(aggregateSQL, targetDate).Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to create daily aggregates: %s", err.Error()))
+		res.Msg = "Create daily aggregates failed"
+		return res
+	}
+
+	res.Success = true
+	res.Msg = fmt.Sprintf("Daily aggregates created for date: %s", targetDate)
+	return res
+}
+
+// GetStorageStats 獲取存儲統計信息
+func GetStorageStats() models.Response {
+	res := models.Response{}
+	res.Success = false
+
+	type StorageStats struct {
+		TableName    string  `json:"table_name"`
+		RecordCount  int64   `json:"record_count"`
+		DataSizeMB   float64 `json:"data_size_mb"`
+		IndexSizeMB  float64 `json:"index_size_mb"`
+		TotalSizeMB  float64 `json:"total_size_mb"`
+		OldestRecord string  `json:"oldest_record"`
+		NewestRecord string  `json:"newest_record"`
+	}
+
+	var stats []StorageStats
+
+	// 查詢各表存儲統計
+	statsSQL := `
+		SELECT
+			table_name,
+			table_rows as record_count,
+			data_length/1024/1024 as data_size_mb,
+			index_length/1024/1024 as index_size_mb,
+			(data_length + index_length)/1024/1024 as total_size_mb
+		FROM information_schema.tables
+		WHERE table_schema = 'logdetect'
+			AND table_name IN ('histories', 'history_archives', 'history_daily_stats', 'alert_histories')
+		ORDER BY total_size_mb DESC
+	`
+
+	if err := global.Mysql.Raw(statsSQL).Scan(&stats).Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to get storage stats: %s", err.Error()))
+		res.Msg = "Get storage stats failed"
+		return res
+	}
+
+	// 獲取記錄時間範圍
+	for i := range stats {
+		var dateRange struct {
+			Oldest string
+			Newest string
+		}
+
+		tableName := stats[i].TableName
+		if tableName == "histories" || tableName == "history_archives" {
+			global.Mysql.Table(tableName).Select("MIN(date) as oldest, MAX(date) as newest").Scan(&dateRange)
+		}
+
+		stats[i].OldestRecord = dateRange.Oldest
+		stats[i].NewestRecord = dateRange.Newest
+	}
+
+	res.Body = stats
+	res.Success = true
+	return res
 }
