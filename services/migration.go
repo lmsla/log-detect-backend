@@ -51,7 +51,8 @@ func runTimescaleDBMigrations() error {
 }
 
 // executeMigrations 執行指定目錄的 migrations
-func executeMigrations(db *sql.DB, migrationsDir string, dbName string) error {
+// dbType: "mysql" 或 "timescaledb"
+func executeMigrations(db *sql.DB, migrationsDir string, dbType string) error {
 	// 確保 schema_migrations 表存在
 	if err := ensureMigrationsTable(db); err != nil {
 		return fmt.Errorf("failed to create migrations table: %w", err)
@@ -81,7 +82,7 @@ func executeMigrations(db *sql.DB, migrationsDir string, dbName string) error {
 			continue // 已執行過，跳過
 		}
 
-		log.Printf("[%s] Applying migration: %s", dbName, file)
+		log.Printf("[%s] Applying migration: %s", dbType, file)
 
 		content, err := os.ReadFile(filepath.Join(migrationsDir, file))
 		if err != nil {
@@ -93,12 +94,12 @@ func executeMigrations(db *sql.DB, migrationsDir string, dbName string) error {
 			return fmt.Errorf("failed to execute migration %s: %w", file, err)
 		}
 
-		// 記錄已執行
-		if err := recordMigration(db, version); err != nil {
+		// 記錄已執行（根據資料庫類型使用不同佔位符）
+		if err := recordMigration(db, version, dbType); err != nil {
 			return fmt.Errorf("failed to record migration %s: %w", file, err)
 		}
 
-		log.Printf("[%s] Applied migration: %s", dbName, file)
+		log.Printf("[%s] Applied migration: %s", dbType, file)
 	}
 
 	return nil
@@ -221,8 +222,16 @@ func splitSQL(content string) []string {
 }
 
 // recordMigration 記錄已執行的 migration
-func recordMigration(db *sql.DB, version string) error {
-	_, err := db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version)
+// dbType: "mysql" 使用 ? 佔位符，"timescaledb" 使用 $1 佔位符
+func recordMigration(db *sql.DB, version string, dbType string) error {
+	var query string
+	if dbType == "mysql" {
+		query = "INSERT INTO schema_migrations (version) VALUES (?)"
+	} else {
+		// PostgreSQL / TimescaleDB 使用 $1 佔位符
+		query = "INSERT INTO schema_migrations (version) VALUES ($1)"
+	}
+	_, err := db.Exec(query, version)
 	return err
 }
 

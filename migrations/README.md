@@ -14,6 +14,15 @@ migrations/
     └── 001_initial_schema.down.sql     # 回滾用
 ```
 
+## TimescaleDB 表格清單
+
+| 表名 | 用途 | 寫入 | 讀取 |
+|------|------|------|------|
+| `device_metrics` | 設備監控指標時序表 | batch_writer.go | timescale_history.go |
+| `es_metrics` | ES 監控指標時序表 | batch_writer.go | es_monitor_query.go |
+| `es_alert_history` | ES 告警歷史時序表 | es_monitor.go | es_alert_service.go |
+| `schema_migrations` | Migration 版本追蹤 | migration.go | migration.go |
+
 ## 運作方式
 
 1. 程式啟動時呼叫 `services.RunMigrations()`
