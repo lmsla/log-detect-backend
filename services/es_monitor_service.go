@@ -17,17 +17,23 @@ func CreateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 			Msg:     "監控名稱不能為空",
 		}
 	}
-	if monitor.Host == "" {
+	if monitor.ESConnectionID == 0 {
 		return models.Response{
 			Success: false,
-			Msg:     "主機地址不能為空",
+			Msg:     "ES 連線 ID 不能為空",
+		}
+	}
+
+	// 驗證 ESConnection 是否存在
+	var esConn entities.ESConnection
+	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", monitor.ESConnectionID).First(&esConn).Error; err != nil {
+		return models.Response{
+			Success: false,
+			Msg:     "指定的 ES 連線不存在",
 		}
 	}
 
 	// 設置默認值
-	if monitor.Port == 0 {
-		monitor.Port = 9200
-	}
 	if monitor.Interval == 0 {
 		monitor.Interval = 60
 	}
