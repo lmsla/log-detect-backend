@@ -133,7 +133,7 @@ func DeleteESMonitor(c *gin.Context) {
 // @Param id path int true "Monitor ID"
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/monitors/{id}/test [post]
-func TestESConnection(c *gin.Context) {
+func TestESMonitorConnection(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
@@ -153,7 +153,7 @@ func TestESConnection(c *gin.Context) {
 		return
 	}
 
-	res := services.TestESConnection(monitor)
+	res := services.TestESMonitorConnection(monitor)
 
 	if !res.Success {
 		c.JSON(http.StatusBadRequest, res)
