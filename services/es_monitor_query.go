@@ -154,25 +154,34 @@ func (s *ESMonitorQueryService) GetMetricsTimeSeries(monitorID int, startTime, e
 
 // GetAllMonitorsStatus 獲取所有監控器的當前狀態
 func (s *ESMonitorQueryService) GetAllMonitorsStatus() ([]entities.ESMonitorStatus, error) {
-	// 先從 MySQL 獲取所有監控配置
+	// 先從 MySQL 獲取所有監控配置（包含 ESConnection）
 	var monitors []entities.ElasticsearchMonitor
-	if err := global.Mysql.Find(&monitors).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Find(&monitors).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch monitor configs: %w", err)
 	}
 
 	// 初始化為空切片，確保無數據時返回 [] 而不是 null
 	statuses := make([]entities.ESMonitorStatus, 0)
 	for _, monitor := range monitors {
+		// 取得 ESConnection 資訊
+		var host, connName string
+		if monitor.ESConnection != nil {
+			host = fmt.Sprintf("%s:%d", monitor.ESConnection.Host, monitor.ESConnection.Port)
+			connName = monitor.ESConnection.Name
+		}
+
 		// 獲取每個監控器的最新指標
 		metric, err := s.GetLatestMetrics(monitor.ID)
 		if err != nil {
 			// 如果沒有數據，標記為離線
 			statuses = append(statuses, entities.ESMonitorStatus{
-				MonitorID:    monitor.ID,
-				MonitorName:  monitor.Name,
-				Host:         fmt.Sprintf("%s:%d", monitor.Host, monitor.Port),
-				Status:       "offline",
-				ErrorMessage: "No metrics data available",
+				MonitorID:        monitor.ID,
+				MonitorName:      monitor.Name,
+				ESConnectionID:   monitor.ESConnectionID,
+				ESConnectionName: connName,
+				Host:             host,
+				Status:           "offline",
+				ErrorMessage:     "No metrics data available",
 			})
 			continue
 		}
@@ -181,7 +190,9 @@ func (s *ESMonitorQueryService) GetAllMonitorsStatus() ([]entities.ESMonitorStat
 		status := entities.ESMonitorStatus{
 			MonitorID:        monitor.ID,
 			MonitorName:      monitor.Name,
-			Host:             fmt.Sprintf("%s:%d", monitor.Host, monitor.Port),
+			ESConnectionID:   monitor.ESConnectionID,
+			ESConnectionName: connName,
+			Host:             host,
 			Status:           metric.Status,
 			ClusterStatus:    metric.ClusterStatus,
 			ClusterName:      metric.ClusterName,
