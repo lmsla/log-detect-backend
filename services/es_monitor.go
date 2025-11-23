@@ -99,14 +99,31 @@ func (s *ESMonitorService) CheckESHealth(monitor entities.ElasticsearchMonitor) 
 func (s *ESMonitorService) getESConnection(monitor entities.ElasticsearchMonitor) (*entities.ESConnection, error) {
 	// 優先使用已載入的 ESConnection
 	if monitor.ESConnection != nil {
+		log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d (%s): using preloaded ESConnection %d (%s)",
+			monitor.ID, monitor.Name, monitor.ESConnection.ID, monitor.ESConnection.Name))
 		return monitor.ESConnection, nil
+	}
+
+	// ESConnection 未預載入，需要從資料庫讀取
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d (%s): ESConnection not preloaded, loading from DB (ESConnectionID=%d)",
+		monitor.ID, monitor.Name, monitor.ESConnectionID))
+
+	if monitor.ESConnectionID == 0 {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Monitor %d (%s): ESConnectionID is 0, cannot load connection",
+			monitor.ID, monitor.Name))
+		return nil, fmt.Errorf("monitor %d has invalid ESConnectionID (0)", monitor.ID)
 	}
 
 	// 從資料庫讀取
 	var conn entities.ESConnection
 	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", monitor.ESConnectionID).First(&conn).Error; err != nil {
-		return nil, fmt.Errorf("ES connection not found: %w", err)
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Monitor %d (%s): failed to load ESConnection %d from DB: %v",
+			monitor.ID, monitor.Name, monitor.ESConnectionID, err))
+		return nil, fmt.Errorf("ES connection %d not found: %w", monitor.ESConnectionID, err)
 	}
+
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Monitor %d (%s): loaded ESConnection %d (%s) from DB",
+		monitor.ID, monitor.Name, conn.ID, conn.Name))
 	return &conn, nil
 }
 

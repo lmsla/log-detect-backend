@@ -58,7 +58,15 @@ func CreateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 
 	// 如果監控已啟用，啟動排程器
 	if monitor.EnableMonitor && GlobalESScheduler != nil {
-		if err := GlobalESScheduler.StartMonitor(monitor); err != nil {
+		// 重新載入 monitor 並 Preload ESConnection，確保排程器有完整的連線資訊
+		var monitorWithConn entities.ElasticsearchMonitor
+		if err := global.Mysql.Preload("ESConnection").First(&monitorWithConn, monitor.ID).Error; err != nil {
+			return models.Response{
+				Success: false,
+				Msg:     fmt.Sprintf("監控配置已創建但載入連線資訊失敗: %s", err.Error()),
+			}
+		}
+		if err := GlobalESScheduler.StartMonitor(monitorWithConn); err != nil {
 			return models.Response{
 				Success: false,
 				Msg:     fmt.Sprintf("監控配置已創建但啟動失敗: %s", err.Error()),
@@ -66,10 +74,14 @@ func CreateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 		}
 	}
 
+	// 重新載入完整資料返回給前端
+	var createdMonitor entities.ElasticsearchMonitor
+	global.Mysql.Preload("ESConnection").First(&createdMonitor, monitor.ID)
+
 	return models.Response{
 		Success: true,
 		Msg:     "創建監控配置成功",
-		Body:    monitor,
+		Body:    createdMonitor,
 	}
 }
 
@@ -220,9 +232,9 @@ func ToggleESMonitor(id int, enable bool) models.Response {
 		}
 	}
 
-	// 重新載入更新後的監控配置
+	// 重新載入更新後的監控配置（含 ESConnection）
 	var updatedMonitor entities.ElasticsearchMonitor
-	if err := global.Mysql.First(&updatedMonitor, id).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").First(&updatedMonitor, id).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "無法載入更新後的監控配置",
