@@ -31,7 +31,23 @@ func (c *ESConnection) GetURL() string {
 	if c.UseTLS {
 		protocol = "https"
 	}
-	return fmt.Sprintf("%s://%s:%d", protocol, c.Host, c.Port)
+	// 清理 Host 中可能存在的協議前綴
+	host := c.CleanHost()
+	return fmt.Sprintf("%s://%s:%d", protocol, host, c.Port)
+}
+
+// CleanHost 清理 Host 欄位中的協議前綴
+func (c *ESConnection) CleanHost() string {
+	host := c.Host
+	// 移除各種可能的協議前綴
+	prefixes := []string{"https://", "http://", "https//", "http//", "https:", "http:"}
+	for _, prefix := range prefixes {
+		if len(host) > len(prefix) && host[:len(prefix)] == prefix {
+			host = host[len(prefix):]
+			break
+		}
+	}
+	return host
 }
 
 // GetURLs 取得 URL 陣列（用於 elasticsearch.Config.Addresses）
@@ -44,6 +60,11 @@ func (c *ESConnection) Validate() error {
 	if c.Name == "" {
 		return fmt.Errorf("連線名稱不能為空")
 	}
+	if c.Host == "" {
+		return fmt.Errorf("主機地址不能為空")
+	}
+	// 自動清理 Host 中的協議前綴
+	c.Host = c.CleanHost()
 	if c.Host == "" {
 		return fmt.Errorf("主機地址不能為空")
 	}
