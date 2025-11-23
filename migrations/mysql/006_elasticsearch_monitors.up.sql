@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS `elasticsearch_monitors` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL COMMENT '監控名稱',
-    `es_connection_id` INT UNSIGNED NOT NULL COMMENT 'ES 連線 ID（外鍵到 es_connections）',
+    `es_connection_id` INT NOT NULL COMMENT 'ES 連線 ID（外鍵到 es_connections）',
     `check_type` VARCHAR(100) DEFAULT 'health,performance' COMMENT '檢查類型(逗號分隔)',
     `interval` INT NOT NULL DEFAULT 60 COMMENT '檢查間隔(秒,範圍:10-3600)',
     `enable_monitor` TINYINT(1) DEFAULT 1 COMMENT '是否啟用監控',
