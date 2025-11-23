@@ -99,9 +99,9 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 		}
 	}
 
-	// 重新載入更新後的監控配置
+	// 重新載入更新後的監控配置（含 ESConnection）
 	var updatedMonitor entities.ElasticsearchMonitor
-	if err := global.Mysql.First(&updatedMonitor, monitor.ID).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").First(&updatedMonitor, monitor.ID).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "無法載入更新後的監控配置",
@@ -129,7 +129,8 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 func GetAllESMonitors() models.Response {
 	var monitors []entities.ElasticsearchMonitor
 
-	if err := global.Mysql.Find(&monitors).Error; err != nil {
+	// Preload ESConnection 以便排程器和其他服務使用
+	if err := global.Mysql.Preload("ESConnection").Find(&monitors).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     fmt.Sprintf("查詢監控配置失敗: %s", err.Error()),
@@ -147,7 +148,8 @@ func GetAllESMonitors() models.Response {
 func GetESMonitorByID(id int) models.Response {
 	var monitor entities.ElasticsearchMonitor
 
-	if err := global.Mysql.First(&monitor, id).Error; err != nil {
+	// Preload ESConnection
+	if err := global.Mysql.Preload("ESConnection").First(&monitor, id).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "監控配置不存在",
