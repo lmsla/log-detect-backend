@@ -1,0 +1,27 @@
+name: CI Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, Linux, X64, lab]
+    steps:
+      - name: Show runner info
+        run: |
+          echo "runner=$(hostname)"
+          uname -a
+          id
+          df -h
+          free -h
+
+      - name: Git is available
+        run: |
+          git --version
+
+      - name: Docker is available
+        run: |
+          docker version
+          docker info
