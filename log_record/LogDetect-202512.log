@@ -8303,3 +8303,252 @@ INFO 2025/12/17 17:24:09 Creating history record for offline device: 師大附�
 INFO 2025/12/17 17:24:09 About to add history to batch for device: 師大附中國中部
 INFO 2025/12/17 17:24:09 Successfully added history record for offline device: 師大附中國中部
 INFO 2025/12/17 17:24:13 ✅ Successfully flushed 23/23 history records to TimescaleDB
+DEBUG 2025/12/17 17:24:45 Scheduled monitoring check for ES: bimap123 (ID: 4)
+DEBUG 2025/12/17 17:24:45 Scheduled monitoring check for ES: ncku (ID: 2)
+DEBUG 2025/12/17 17:24:45 Scheduled monitoring check for ES: 213 (ID: 1)
+INFO 2025/12/17 17:24:45 Starting ES monitor check for: bimap123
+INFO 2025/12/17 17:24:45 Starting ES monitor check for: ncku
+INFO 2025/12/17 17:24:45 Starting ES monitor check for: 213
+DEBUG 2025/12/17 17:24:45 Scheduled monitoring check for ES: 93 (ID: 5)
+INFO 2025/12/17 17:24:45 Starting ES monitor check for: 93
+DEBUG 2025/12/17 17:24:45 Monitor 1 (213): using preloaded ESConnection 3 (213)
+DEBUG 2025/12/17 17:24:45 Monitor 2 (ncku): using preloaded ESConnection 4 (ncku)
+DEBUG 2025/12/17 17:24:45 Monitor 4 (bimap123): using preloaded ESConnection 6 (bimap123)
+DEBUG 2025/12/17 17:24:45 Monitor 5 (93): using preloaded ESConnection 7 (93)
+DEBUG 2025/12/17 17:24:45 Scheduled monitoring check for ES: NTU (ID: 3)
+INFO 2025/12/17 17:24:45 Starting ES monitor check for: NTU
+DEBUG 2025/12/17 17:24:45 Monitor 3 (NTU): using preloaded ESConnection 5 (NTU)
+DEBUG 2025/12/17 17:24:45 Monitor 5 (93): using preloaded ESConnection 7 (93)
+DEBUG 2025/12/17 17:24:45 Monitor 2 (ncku): using preloaded ESConnection 4 (ncku)
+DEBUG 2025/12/17 17:24:45 Monitor 4 (bimap123): using preloaded ESConnection 6 (bimap123)
+DEBUG 2025/12/17 17:24:45 Monitor 1 (213): using preloaded ESConnection 3 (213)
+DEBUG 2025/12/17 17:24:45 Monitor 3 (NTU): using preloaded ESConnection 5 (NTU)
+DEBUG 2025/12/17 17:24:45 Skipping duplicate alert for monitor 4: Unassigned shards detected: 4
+INFO 2025/12/17 17:24:45 ES monitor check completed for: bimap123, status: warning
+DEBUG 2025/12/17 17:24:45 Skipping duplicate alert for monitor 5: Memory usage high: 88.37% (threshold: 80.00%)
+INFO 2025/12/17 17:24:45 ES monitor check completed for: 213, status: online
+WARN 2025/12/17 17:24:45 ES Alert Created [high][capacity]: Disk usage high: 93.27% (threshold: 85.00%)
+WARN 2025/12/17 17:24:45 ES Alert Created [high][health]: Unassigned shards detected: 36
+DEBUG 2025/12/17 17:24:45 Skipping duplicate alert for monitor 3: Unassigned shards detected: 8
+INFO 2025/12/17 17:24:45 ES monitor check completed for: NTU, status: warning
+WARN 2025/12/17 17:24:45 ES Alert Created [critical][health]: Cluster status is RED
+INFO 2025/12/17 17:24:45 ES monitor check completed for: 93, status: error
+INFO 2025/12/17 17:24:45 ES monitor check completed for: ncku, status: online
+INFO 2025/12/17 17:24:48 ✅ Successfully flushed 5/5 ES metrics to TimescaleDB
+DEBUG 2025/12/17 17:25:00 Index 1 using ES connection 4
+DEBUG 2025/12/17 17:25:00 ==================== ES Query Debug ====================
+DEBUG 2025/12/17 17:25:00 Index: logstash-firewall-fortigate*
+DEBUG 2025/12/17 17:25:00 Field: school_name.keyword
+DEBUG 2025/12/17 17:25:00 Time From: 2025-12-17T17:24:00.000+08:00
+DEBUG 2025/12/17 17:25:00 Time To: 2025-12-17T17:25:00.000+08:00
+DEBUG 2025/12/17 17:25:00 Query Body:
+{
+		"aggs": {
+		  "2": {
+			"terms": {
+			  "field": "school_name.keyword",
+			  "order": {
+				"_count": "desc"
+			  },
+			  "size": 100,
+			  "shard_size": 25
+			}
+		  }
+		},
+		"size": 0,
+		"fields": [
+		  {
+			"field": "@timestamp",
+			"format": "date_time"
+		  }
+		],
+		"script_fields": {},
+		"stored_fields": [
+		  "*"
+		],
+		"runtime_mappings": {},
+		"_source": {
+		  "excludes": []
+		},
+		"query": {
+		  "bool": {
+			"must": [],
+			"filter": [
+			  {
+				"range": {
+				  "@timestamp": {
+					"format": "strict_date_optional_time",
+					"gte": "2025-12-17T17:24:00.000+08:00",
+					"lte": "2025-12-17T17:25:00.000+08:00"
+				  }
+				}
+			  }
+			],
+			"should": [],
+			"must_not": []
+		  }
+		}
+	  }
+DEBUG 2025/12/17 17:25:00 ES Response Status: 200 OK
+DEBUG 2025/12/17 17:25:00 ES Response IsError: false
+DEBUG 2025/12/17 17:25:00 ES Response Body:
+{"took":72,"timed_out":false,"_shards":{"total":444,"successful":444,"skipped":90,"failed":0},"hits":{"total":{"value":10000,"relation":"gte"},"max_score":null,"hits":[]},"aggregations":{"2":{"doc_count_error_upper_bound":0,"sum_other_doc_count":497,"buckets":[{"key":"黑快馬主機","doc_count":1030},{"key":"花蓮高農","doc_count":877},{"key":"仁愛高農","doc_count":597},{"key":"新竹女中","doc_count":576},{"key":"金門農工","doc_count":567},{"key":"金門高中","doc_count":511},{"key":"北門高中","doc_count":464},{"key":"南投高商","doc_count":368},{"key":"蘇澳海事","doc_count":354},{"key":"華僑高中","doc_count":349},{"key":"竹北高中","doc_count":343},{"key":"臺東高中","doc_count":325},{"key":"清華附小","doc_count":307},{"key":"宜蘭高商","doc_count":295},{"key":"興大附中","doc_count":292},{"key":"旗美高中","doc_count":276},{"key":"虎尾高中","doc_count":249},{"key":"嘉義高商","doc_count":237},{"key":"玉里高中","doc_count":228},{"key":"新化高工","doc_count":223},{"key":"竹南高中","doc_count":222},{"key":"屏東女中","doc_count":220},{"key":"關西高中","doc_count":211},{"key":"新港藝高","doc_count":207},{"key":"後壁高中","doc_count":185},{"key":"花蓮高商","doc_count":184},{"key":"基隆商工","doc_count":180},{"key":"內埔農工","doc_count":179},{"key":"南投特教","doc_count":179},{"key":"中大壢中","doc_count":178},{"key":"關山工商","doc_count":178},{"key":"苗栗農工","doc_count":175},{"key":"東港海事","doc_count":174},{"key":"新營高中","doc_count":162},{"key":"斗六家商","doc_count":152},{"key":"員林家商","doc_count":143},{"key":"師大附中高中部","doc_count":141},{"key":"新營高工","doc_count":117},{"key":"臺南一中","doc_count":111},{"key":"新豐高中","doc_count":110},{"key":"南投高中","doc_count":107},{"key":"屏科實中","doc_count":106},{"key":"成大南工","doc_count":96},{"key":"北港高中","doc_count":94},{"key":"北教大實小","doc_count":93},{"key":"彰師附工","doc_count":92},{"key":"新竹高商","doc_count":89},{"key":"中興高中","doc_count":88},{"key":"南大附聰","doc_count":87},{"key":"彰化高商","doc_count":87},{"key":"永靖高工","doc_count":86},{"key":"竹山高中","doc_count":86},{"key":"員林農工","doc_count":84},{"key":"苗栗高中","doc_count":84},{"key":"鳳山高中","doc_count":84},{"key":"新化高中","doc_count":83},{"key":"東石高中","doc_count":83},{"key":"潮州高中","doc_count":83},{"key":"高餐大附中","doc_count":78},{"key":"苗栗高商","doc_count":77},{"key":"草屯商工","doc_count":76},{"key":"二林工商","doc_count":70},{"key":"員林高中","doc_count":70},{"key":"新竹高工","doc_count":69},{"key":"水里商工","doc_count":69},{"key":"北斗家商","doc_count":68},{"key":"花蓮高工","doc_count":68},{"key":"嘉科實中","doc_count":67},{"key":"土庫商工","doc_count":64},{"key":"屏東高工","doc_count":63},{"key":"海大附中","doc_count":60},{"key":"屏東高中","doc_count":57},{"key":"白河商工","doc_count":55},{"key":"竹東高中","doc_count":55},{"key":"善化高中","doc_count":54},{"key":"花蓮高中","doc_count":54},{"key":"宜蘭高中","doc_count":53},{"key":"新竹高中","doc_count":53},{"key":"華南高商","doc_count":52},{"key":"頭城家商","doc_count":52},{"key":"臺南高商","doc_count":51},{"key":"北港農工","doc_count":50},{"key":"雲林特教","doc_count":50},{"key":"曾文農工","doc_count":49},{"key":"佳冬高農","doc_count":47},{"key":"花蓮特教","doc_count":47},{"key":"師大附中國中部","doc_count":46},{"key":"羅東高商","doc_count":46},{"key":"臺東女中","doc_count":45},{"key":"屏東特教","doc_count":44},{"key":"澎湖海事","doc_count":44},{"key":"羅東高工","doc_count":44},{"key":"嘉義高中","doc_count":43},{"key":"家齊高中","doc_count":43},{"key":"屏北高中","doc_count":43},{"key":"興大附農","doc_count":43},{"key":"南大附中","doc_count":42},{"key":"秀水高工","doc_count":42},{"key":"政大附中","doc_count":41},{"key":"溪湖高中","doc_count":41}]}}}
+DEBUG 2025/12/17 17:25:00 Aggregation Buckets Count: 100
+DEBUG 2025/12/17 17:25:00   Bucket[0]: Key=黑快馬主機, DocCount=1030
+DEBUG 2025/12/17 17:25:00   Bucket[1]: Key=花蓮高農, DocCount=877
+DEBUG 2025/12/17 17:25:00   Bucket[2]: Key=仁愛高農, DocCount=597
+DEBUG 2025/12/17 17:25:00   Bucket[3]: Key=新竹女中, DocCount=576
+DEBUG 2025/12/17 17:25:00   Bucket[4]: Key=金門農工, DocCount=567
+DEBUG 2025/12/17 17:25:00   Bucket[5]: Key=金門高中, DocCount=511
+DEBUG 2025/12/17 17:25:00   Bucket[6]: Key=北門高中, DocCount=464
+DEBUG 2025/12/17 17:25:00   Bucket[7]: Key=南投高商, DocCount=368
+DEBUG 2025/12/17 17:25:00   Bucket[8]: Key=蘇澳海事, DocCount=354
+DEBUG 2025/12/17 17:25:00   Bucket[9]: Key=華僑高中, DocCount=349
+DEBUG 2025/12/17 17:25:00   Bucket[10]: Key=竹北高中, DocCount=343
+DEBUG 2025/12/17 17:25:00   Bucket[11]: Key=臺東高中, DocCount=325
+DEBUG 2025/12/17 17:25:00   Bucket[12]: Key=清華附小, DocCount=307
+DEBUG 2025/12/17 17:25:00   Bucket[13]: Key=宜蘭高商, DocCount=295
+DEBUG 2025/12/17 17:25:00   Bucket[14]: Key=興大附中, DocCount=292
+DEBUG 2025/12/17 17:25:00   Bucket[15]: Key=旗美高中, DocCount=276
+DEBUG 2025/12/17 17:25:00   Bucket[16]: Key=虎尾高中, DocCount=249
+DEBUG 2025/12/17 17:25:00   Bucket[17]: Key=嘉義高商, DocCount=237
+DEBUG 2025/12/17 17:25:00   Bucket[18]: Key=玉里高中, DocCount=228
+DEBUG 2025/12/17 17:25:00   Bucket[19]: Key=新化高工, DocCount=223
+DEBUG 2025/12/17 17:25:00   Bucket[20]: Key=竹南高中, DocCount=222
+DEBUG 2025/12/17 17:25:00   Bucket[21]: Key=屏東女中, DocCount=220
+DEBUG 2025/12/17 17:25:00   Bucket[22]: Key=關西高中, DocCount=211
+DEBUG 2025/12/17 17:25:00   Bucket[23]: Key=新港藝高, DocCount=207
+DEBUG 2025/12/17 17:25:00   Bucket[24]: Key=後壁高中, DocCount=185
+DEBUG 2025/12/17 17:25:00   Bucket[25]: Key=花蓮高商, DocCount=184
+DEBUG 2025/12/17 17:25:00   Bucket[26]: Key=基隆商工, DocCount=180
+DEBUG 2025/12/17 17:25:00   Bucket[27]: Key=內埔農工, DocCount=179
+DEBUG 2025/12/17 17:25:00   Bucket[28]: Key=南投特教, DocCount=179
+DEBUG 2025/12/17 17:25:00   Bucket[29]: Key=中大壢中, DocCount=178
+DEBUG 2025/12/17 17:25:00   Bucket[30]: Key=關山工商, DocCount=178
+DEBUG 2025/12/17 17:25:00   Bucket[31]: Key=苗栗農工, DocCount=175
+DEBUG 2025/12/17 17:25:00   Bucket[32]: Key=東港海事, DocCount=174
+DEBUG 2025/12/17 17:25:00   Bucket[33]: Key=新營高中, DocCount=162
+DEBUG 2025/12/17 17:25:00   Bucket[34]: Key=斗六家商, DocCount=152
+DEBUG 2025/12/17 17:25:00   Bucket[35]: Key=員林家商, DocCount=143
+DEBUG 2025/12/17 17:25:00   Bucket[36]: Key=師大附中高中部, DocCount=141
+DEBUG 2025/12/17 17:25:00   Bucket[37]: Key=新營高工, DocCount=117
+DEBUG 2025/12/17 17:25:00   Bucket[38]: Key=臺南一中, DocCount=111
+DEBUG 2025/12/17 17:25:00   Bucket[39]: Key=新豐高中, DocCount=110
+DEBUG 2025/12/17 17:25:00   Bucket[40]: Key=南投高中, DocCount=107
+DEBUG 2025/12/17 17:25:00   Bucket[41]: Key=屏科實中, DocCount=106
+DEBUG 2025/12/17 17:25:00   Bucket[42]: Key=成大南工, DocCount=96
+DEBUG 2025/12/17 17:25:00   Bucket[43]: Key=北港高中, DocCount=94
+DEBUG 2025/12/17 17:25:00   Bucket[44]: Key=北教大實小, DocCount=93
+DEBUG 2025/12/17 17:25:00   Bucket[45]: Key=彰師附工, DocCount=92
+DEBUG 2025/12/17 17:25:00   Bucket[46]: Key=新竹高商, DocCount=89
+DEBUG 2025/12/17 17:25:00   Bucket[47]: Key=中興高中, DocCount=88
+DEBUG 2025/12/17 17:25:00   Bucket[48]: Key=南大附聰, DocCount=87
+DEBUG 2025/12/17 17:25:00   Bucket[49]: Key=彰化高商, DocCount=87
+DEBUG 2025/12/17 17:25:00   Bucket[50]: Key=永靖高工, DocCount=86
+DEBUG 2025/12/17 17:25:00   Bucket[51]: Key=竹山高中, DocCount=86
+DEBUG 2025/12/17 17:25:00   Bucket[52]: Key=員林農工, DocCount=84
+DEBUG 2025/12/17 17:25:00   Bucket[53]: Key=苗栗高中, DocCount=84
+DEBUG 2025/12/17 17:25:00   Bucket[54]: Key=鳳山高中, DocCount=84
+DEBUG 2025/12/17 17:25:00   Bucket[55]: Key=新化高中, DocCount=83
+DEBUG 2025/12/17 17:25:00   Bucket[56]: Key=東石高中, DocCount=83
+DEBUG 2025/12/17 17:25:00   Bucket[57]: Key=潮州高中, DocCount=83
+DEBUG 2025/12/17 17:25:00   Bucket[58]: Key=高餐大附中, DocCount=78
+DEBUG 2025/12/17 17:25:00   Bucket[59]: Key=苗栗高商, DocCount=77
+DEBUG 2025/12/17 17:25:00   Bucket[60]: Key=草屯商工, DocCount=76
+DEBUG 2025/12/17 17:25:00   Bucket[61]: Key=二林工商, DocCount=70
+DEBUG 2025/12/17 17:25:00   Bucket[62]: Key=員林高中, DocCount=70
+DEBUG 2025/12/17 17:25:00   Bucket[63]: Key=新竹高工, DocCount=69
+DEBUG 2025/12/17 17:25:00   Bucket[64]: Key=水里商工, DocCount=69
+DEBUG 2025/12/17 17:25:00   Bucket[65]: Key=北斗家商, DocCount=68
+DEBUG 2025/12/17 17:25:00   Bucket[66]: Key=花蓮高工, DocCount=68
+DEBUG 2025/12/17 17:25:00   Bucket[67]: Key=嘉科實中, DocCount=67
+DEBUG 2025/12/17 17:25:00   Bucket[68]: Key=土庫商工, DocCount=64
+DEBUG 2025/12/17 17:25:00   Bucket[69]: Key=屏東高工, DocCount=63
+DEBUG 2025/12/17 17:25:00   Bucket[70]: Key=海大附中, DocCount=60
+DEBUG 2025/12/17 17:25:00   Bucket[71]: Key=屏東高中, DocCount=57
+DEBUG 2025/12/17 17:25:00   Bucket[72]: Key=白河商工, DocCount=55
+DEBUG 2025/12/17 17:25:00   Bucket[73]: Key=竹東高中, DocCount=55
+DEBUG 2025/12/17 17:25:00   Bucket[74]: Key=善化高中, DocCount=54
+DEBUG 2025/12/17 17:25:00   Bucket[75]: Key=花蓮高中, DocCount=54
+DEBUG 2025/12/17 17:25:00   Bucket[76]: Key=宜蘭高中, DocCount=53
+DEBUG 2025/12/17 17:25:00   Bucket[77]: Key=新竹高中, DocCount=53
+DEBUG 2025/12/17 17:25:00   Bucket[78]: Key=華南高商, DocCount=52
+DEBUG 2025/12/17 17:25:00   Bucket[79]: Key=頭城家商, DocCount=52
+DEBUG 2025/12/17 17:25:00   Bucket[80]: Key=臺南高商, DocCount=51
+DEBUG 2025/12/17 17:25:00   Bucket[81]: Key=北港農工, DocCount=50
+DEBUG 2025/12/17 17:25:00   Bucket[82]: Key=雲林特教, DocCount=50
+DEBUG 2025/12/17 17:25:00   Bucket[83]: Key=曾文農工, DocCount=49
+DEBUG 2025/12/17 17:25:00   Bucket[84]: Key=佳冬高農, DocCount=47
+DEBUG 2025/12/17 17:25:00   Bucket[85]: Key=花蓮特教, DocCount=47
+DEBUG 2025/12/17 17:25:00   Bucket[86]: Key=師大附中國中部, DocCount=46
+DEBUG 2025/12/17 17:25:00   Bucket[87]: Key=羅東高商, DocCount=46
+DEBUG 2025/12/17 17:25:00   Bucket[88]: Key=臺東女中, DocCount=45
+DEBUG 2025/12/17 17:25:00   Bucket[89]: Key=屏東特教, DocCount=44
+DEBUG 2025/12/17 17:25:00   Bucket[90]: Key=澎湖海事, DocCount=44
+DEBUG 2025/12/17 17:25:00   Bucket[91]: Key=羅東高工, DocCount=44
+DEBUG 2025/12/17 17:25:00   Bucket[92]: Key=嘉義高中, DocCount=43
+DEBUG 2025/12/17 17:25:00   Bucket[93]: Key=家齊高中, DocCount=43
+DEBUG 2025/12/17 17:25:00   Bucket[94]: Key=屏北高中, DocCount=43
+DEBUG 2025/12/17 17:25:00   Bucket[95]: Key=興大附農, DocCount=43
+DEBUG 2025/12/17 17:25:00   Bucket[96]: Key=南大附中, DocCount=42
+DEBUG 2025/12/17 17:25:00   Bucket[97]: Key=秀水高工, DocCount=42
+DEBUG 2025/12/17 17:25:00   Bucket[98]: Key=政大附中, DocCount=41
+DEBUG 2025/12/17 17:25:00   Bucket[99]: Key=溪湖高中, DocCount=41
+DEBUG 2025/12/17 17:25:00 ========================================================
+INFO 2025/12/17 17:25:06 ✅ Successfully flushed 50/58 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 51/2 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 52/1 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 53/2 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 54/0 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 55/1 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 56/0 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 57/1 history records to TimescaleDB
+INFO 2025/12/17 17:25:07 ✅ Successfully flushed 58/1 history records to TimescaleDB
+INFO 2025/12/17 17:25:08 ✅ Successfully flushed 6/6 history records to TimescaleDB
+INFO 2025/12/17 17:25:09 Processing 15 offline devices
+INFO 2025/12/17 17:25:09 Creating history record for offline device: 玉井工商
+INFO 2025/12/17 17:25:09 About to add history to batch for device: 玉井工商
+INFO 2025/12/17 17:25:09 Successfully added history record for offline device: 玉井工商
+INFO 2025/12/17 17:25:09 Creating history record for offline device: 基隆特教
+INFO 2025/12/17 17:25:09 About to add history to batch for device: 基隆特教
+INFO 2025/12/17 17:25:09 Successfully added history record for offline device: 基隆特教
+INFO 2025/12/17 17:25:09 Creating history record for offline device: 嘉義特教
+INFO 2025/12/17 17:25:09 About to add history to batch for device: 嘉義特教
+INFO 2025/12/17 17:25:09 Successfully added history record for offline device: 嘉義特教
+INFO 2025/12/17 17:25:09 Creating history record for offline device: 埔里高工
+INFO 2025/12/17 17:25:09 About to add history to batch for device: 埔里高工
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 埔里高工
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 崇實高工
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 崇實高工
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 崇實高工
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 南大附小
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 南大附小
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 南大附小
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 暨大附中
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 暨大附中
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 暨大附中
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 新竹特教
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 新竹特教
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 新竹特教
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 蘭陽女中
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 蘭陽女中
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 蘭陽女中
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 嘉義家職
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 嘉義家職
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 嘉義家職
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 成功商水
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 成功商水
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 成功商水
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 臺東高商
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 臺東高商
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 臺東高商
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 旗山農工
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 旗山農工
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 旗山農工
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 嘉義高工
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 嘉義高工
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 嘉義高工
+INFO 2025/12/17 17:25:10 Creating history record for offline device: 北科附工
+INFO 2025/12/17 17:25:10 About to add history to batch for device: 北科附工
+INFO 2025/12/17 17:25:10 Successfully added history record for offline device: 北科附工
+INFO 2025/12/17 17:25:13 ✅ Successfully flushed 42/42 history records to TimescaleDB
