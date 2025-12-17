@@ -1,27 +1,23 @@
 name: CI Smoke
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ "develop" ]
+    branches:
+      - develop
+  workflow_dispatch:
 
 jobs:
   smoke:
-    runs-on: [self-hosted, Linux, X64, lab]
+    runs-on: self-hosted
     steps:
-      - name: Show runner info
-        run: |
-          echo "runner=$(hostname)"
-          uname -a
-          id
-          df -h
-          free -h
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - name: Git is available
-        run: |
-          git --version
+      - name: Show Go version
+        run: go version
 
-      - name: Docker is available
-        run: |
-          docker version
-          docker info
+      - name: Go test
+        run: go test ./...
+
+      - name: Go build
+        run: go build ./...
