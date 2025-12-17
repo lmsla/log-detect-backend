@@ -9,11 +9,12 @@ import (
 	"log-detect/models"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	// "github.com/elastic/go-elasticsearch/v8"
 )
 
 func Detect(execute_time time.Time, indexID int, index string, field string, period string, unit int, receiver []string, subject string, logname string, device_group string) {
 	timenow := execute_time.Format("2006-01-02 15:04:05")
+	timenow_es := execute_time.Format("2006-01-02T15:04") + ":00.000+08:00" // ISO 8601 格式用於 ES 查詢
 	// var cronjob string
 	var time3_str string
 	date_time := execute_time.Format("2006-01-02")
@@ -42,7 +43,7 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	}
 
 	var result_list []string
-	result := SearchRequestWithClient(esClient, index, field, time3_str, timenow)
+	result := SearchRequestWithClient(esClient, index, field, time3_str, timenow_es)
 	// fmt.Println("資料搜尋結果:",result)
 
 	for i := range result.Aggregations.Num2.Buckets {
@@ -169,8 +170,10 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		}
 
 		Insert_HistoryData(historyData)
-		if err := global.BatchWriter.AddHistory(historyData); err != nil {
-			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
+		if global.BatchWriter != nil {
+			if err := global.BatchWriter.AddHistory(historyData); err != nil {
+				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
+			}
 		}
 	}
 
@@ -210,10 +213,12 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 
 		log.Logrecord_no_rotate("INFO", fmt.Sprintf("About to add history to batch for device: %s", device))
 		Insert_HistoryData(historyData)
-		if err := global.BatchWriter.AddHistory(historyData); err != nil {
-			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
-		} else {
-			log.Logrecord_no_rotate("INFO", fmt.Sprintf("Successfully added history record for offline device: %s", device))
+		if global.BatchWriter != nil {
+			if err := global.BatchWriter.AddHistory(historyData); err != nil {
+				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
+			} else {
+				log.Logrecord_no_rotate("INFO", fmt.Sprintf("Successfully added history record for offline device: %s", device))
+			}
 		}
 	}
 

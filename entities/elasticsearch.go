@@ -15,7 +15,7 @@ type ElasticsearchMonitor struct {
 	CheckType     string   `json:"check_type" gorm:"type:varchar(100);default:'health,performance';comment:檢查類型(逗號分隔)"`
 	Interval      int      `json:"interval" gorm:"type:int;not null;default:60;comment:檢查間隔(秒,範圍:10-3600)"`
 	EnableMonitor bool     `json:"enable_monitor" gorm:"type:tinyint(1);default:1;comment:是否啟用監控"`
-	Receivers     []string `json:"receivers" gorm:"type:json;serializer:json;comment:告警收件人陣列"`
+	Receivers     []string `json:"receivers" gorm:"serializer:json;comment:告警收件人陣列"`
 	Subject       string   `json:"subject" gorm:"type:varchar(255);comment:告警主題"`
 	Description   string   `json:"description" gorm:"type:text;comment:監控描述"`
 

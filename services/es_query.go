@@ -63,28 +63,52 @@ func SearchRequestWithClient(esClient *elasticsearch.Client, index string, field
 		  }
 		}
 	  }`, field, timefrom, timeto)
-	// fmt.Println(querybody)
+
+	// 印出查詢參數和語句
+	log.Logrecord_no_rotate("DEBUG", "==================== ES Query Debug ====================")
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Index: %s", index))
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Field: %s", field))
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Time From: %s", timefrom))
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Time To: %s", timeto))
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Query Body:\n%s", querybody))
+
 	req := esapi.SearchRequest{
 		Index: []string{index},
 		Body:  strings.NewReader(querybody),
 	}
 	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("es connect error: %s", err.Error()))
-
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("ES connect error: %s", err.Error()))
+		return Search_Request{}
 	}
+	defer res.Body.Close()
+
+	// 印出 ES 響應狀態
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("ES Response Status: %s", res.Status()))
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("ES Response IsError: %v", res.IsError()))
 
 	resString, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("read res.body error: %s", err.Error()))
-
+		return Search_Request{}
 	}
-	var s Search_Request
-	json.Unmarshal(resString, &s)
-	// // log.Println(res)
-	defer res.Body.Close()
 
-	// fmt.Println(resString)
+	// 印出 ES 響應內容
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("ES Response Body:\n%s", string(resString)))
+
+	var s Search_Request
+	if err := json.Unmarshal(resString, &s); err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("JSON unmarshal error: %s", err.Error()))
+		return Search_Request{}
+	}
+
+	// 印出聚合結果摘要
+	log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("Aggregation Buckets Count: %d", len(s.Aggregations.Num2.Buckets)))
+	for i, bucket := range s.Aggregations.Num2.Buckets {
+		log.Logrecord_no_rotate("DEBUG", fmt.Sprintf("  Bucket[%d]: Key=%s, DocCount=%d", i, bucket.Key, bucket.DocCount))
+	}
+	log.Logrecord_no_rotate("DEBUG", "========================================================")
+
 	return s
 }
 

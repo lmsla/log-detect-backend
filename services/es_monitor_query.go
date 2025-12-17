@@ -166,7 +166,7 @@ func (s *ESMonitorQueryService) GetAllMonitorsStatus() ([]entities.ESMonitorStat
 		// 取得 ESConnection 資訊
 		var host, connName string
 		if monitor.ESConnection != nil {
-			host = fmt.Sprintf("%s:%d", monitor.ESConnection.Host, monitor.ESConnection.Port)
+			host = fmt.Sprintf("%s:%d", monitor.ESConnection.CleanHost(), monitor.ESConnection.Port)
 			connName = monitor.ESConnection.Name
 		}
 

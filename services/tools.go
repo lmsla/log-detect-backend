@@ -1,9 +1,5 @@
 package services
 
-import (
-	"fmt"
-)
-
 func ListCompare(a, b []string) (added []string, removed []string, intersection []string) {
 
 	// 建立一個 map 來追蹤 a 中的元素
@@ -26,9 +22,9 @@ func ListCompare(a, b []string) (added []string, removed []string, intersection 
 		removed = append(removed, item)
 	}
 	// return added, removed
-	fmt.Println("add:", added)
-	fmt.Println("removed: ", removed)
-	fmt.Println("Intersection:", intersection)
+	// fmt.Println("add:", added)
+	// fmt.Println("removed: ", removed)
+	// fmt.Println("Intersection:", intersection)
 
 	return added, removed, intersection
 }

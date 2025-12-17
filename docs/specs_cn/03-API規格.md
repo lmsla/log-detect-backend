@@ -2,10 +2,10 @@
 
 ## 文件資訊
 
-| 項目 | 內容 |
-|------|------|
-| 文件版本 | 2.0 |
-| 最後更新 | 2025-11-18 |
+| 項目   | 內容                    |
+| ---- | --------------------- |
+| 文件版本 | 2.0                   |
+| 最後更新 | 2025-11-18            |
 | 文件類型 | 軟體設計文件 (SDD) - API 規格 |
 
 ---
@@ -36,15 +36,15 @@
 
 #### 狀態碼說明
 
-| HTTP 狀態碼 | code | 說明 |
-|------------|------|------|
-| 200 | 200 | 成功 |
-| 201 | 201 | 建立成功 |
-| 400 | 400 | 請求參數錯誤 |
-| 401 | 401 | 未授權（令牌無效或過期） |
-| 403 | 403 | 禁止訪問（權限不足） |
-| 404 | 404 | 資源不存在 |
-| 500 | 500 | 伺服器錯誤 |
+| HTTP 狀態碼 | code | 說明           |
+| -------- | ---- | ------------ |
+| 200      | 200  | 成功           |
+| 201      | 201  | 建立成功         |
+| 400      | 400  | 請求參數錯誤       |
+| 401      | 401  | 未授權（令牌無效或過期） |
+| 403      | 403  | 禁止訪問（權限不足）   |
+| 404      | 404  | 資源不存在        |
+| 500      | 500  | 伺服器錯誤        |
 
 ### 1.3 認證機制
 
@@ -67,6 +67,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 公開
 
 **請求範例**:
+
 ```json
 {
   "username": "admin",
@@ -75,6 +76,7 @@ Authorization: Bearer {your-jwt-token}
 ```
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -104,6 +106,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `user.create`
 
 **請求範例**:
+
 ```json
 {
   "username": "newuser",
@@ -122,6 +125,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 已認證
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -161,6 +165,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `target.read`
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -197,6 +202,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `target.create`
 
 **請求範例**:
+
 ```json
 {
   "subject": "Production WebServer",
@@ -207,6 +213,7 @@ Authorization: Bearer {your-jwt-token}
 ```
 
 **說明**:
+
 - `subject`: 警報郵件主旨
 - `to`: 收件人郵箱列表
 - `enable`: 是否啟用監控
@@ -221,6 +228,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `target.update`
 
 **請求範例**:
+
 ```json
 {
   "id": 1,
@@ -240,6 +248,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `target.delete`
 
 **路徑參數**:
+
 - `id`: 目標 ID
 
 ---
@@ -255,9 +264,11 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `device.read`
 
 **查詢參數**:
+
 - `device_group`: (可選) 裝置群組名稱
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -282,6 +293,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `device.create`
 
 **請求範例**:
+
 ```json
 {
   "devices": [
@@ -306,6 +318,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `device.read`
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -336,6 +349,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `indices.read`
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -364,6 +378,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `indices.create`
 
 **請求範例**:
+
 ```json
 {
   "pattern": "logstash-prod-*",
@@ -376,6 +391,7 @@ Authorization: Bearer {your-jwt-token}
 ```
 
 **欄位說明**:
+
 - `pattern`: Elasticsearch 索引模式（支援萬用字元）
 - `device_group`: 裝置群組名稱
 - `logname`: 日誌名稱（用於識別）
@@ -396,6 +412,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.read`
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -428,6 +445,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.create`
 
 **請求範例**:
+
 ```json
 {
   "name": "Production ES Cluster",
@@ -459,6 +477,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.read`
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -480,6 +499,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.update`
 
 **請求範例**:
+
 ```json
 {
   "enable": true
@@ -495,6 +515,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.read`
 
 **查詢參數**:
+
 - `monitor_id`: (可選) 監控器 ID
 - `status`: (可選) 警報狀態（active, resolved, acknowledged）
 - `severity`: (可選) 嚴重程度（low, medium, high, critical）
@@ -502,6 +523,7 @@ Authorization: Bearer {your-jwt-token}
 - `end_time`: (可選) 結束時間
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -532,12 +554,166 @@ Authorization: Bearer {your-jwt-token}
 **權限**: `elasticsearch.update`
 
 **請求範例**:
+
 ```json
 {
   "alert_id": 1,
   "resolution_note": "已手動擴展 ES 叢集容量"
 }
 ```
+
+### 6.7 取得所有監控器狀態
+
+**端點**: `GET /api/v1/elasticsearch/status`
+
+**描述**: 取得所有 ES 監控器的即時狀態
+
+**權限**: `elasticsearch.read`
+
+**回應範例**:
+
+```json
+{
+  "success": true,
+  "msg": "查詢成功",
+  "body": [
+    {
+      "monitor_id": 1,
+      "monitor_name": "Production ES Cluster",
+      "enabled": true,
+      "cluster_name": "production-cluster",
+      "cluster_status": "green",
+      "host": "10.99.1.213:9200",
+      "nodes_count": 3,
+      "cpu_usage": 45.2,
+      "memory_usage": 67.8,
+      "disk_usage": 52.3,
+      "active_shards": 150,
+      "unassigned_shards": 0,
+      "jvm_heap_used_percent": 68.5,
+      "last_check_time": "2024-01-01T12:00:00Z",
+      "status": "healthy"
+    }
+  ]
+}
+```
+
+### 6.8 取得 ES 統計資料
+
+**端點**: `GET /api/v1/elasticsearch/statistics`
+
+**描述**: 取得 ES 監控系統的整體統計資料
+
+**權限**: `elasticsearch.read`
+
+**回應範例**:
+
+```json
+{
+  "success": true,
+  "msg": "查詢成功",
+  "body": {
+    "total_monitors": 5,
+    "active_monitors": 4,
+    "healthy_clusters": 3,
+    "warning_clusters": 1,
+    "critical_clusters": 0,
+    "total_nodes": 15,
+    "active_alerts": 2,
+    "avg_cpu_usage": 52.3,
+    "avg_memory_usage": 65.7,
+    "avg_disk_usage": 48.9
+  }
+}
+```
+
+### 6.9 取得監控器歷史時間序列
+
+**端點**: `GET /api/v1/elasticsearch/status/:id/history`
+
+**描述**: 取得指定監控器的歷史指標時間序列資料（來自 TimescaleDB）
+
+**權限**: `elasticsearch.read`
+
+**路徑參數**:
+
+- `id`: 監控器 ID
+
+**查詢參數**:
+
+- `hours`: (可選) 查詢時間範圍（小時），預設 24，最大 720（30 天）
+- `interval`: (可選) 時間間隔（time bucket），若不指定則自動判斷
+
+**Interval 自動判斷邏輯**:
+
+| 查詢時間範圍            | 自動 Interval | 說明                   |
+| ----------------- | ----------- | -------------------- |
+| `hours <= 1`      | `1 minute`  | 1 小時內：每 1 分鐘一個數據點    |
+| `1 < hours <= 24` | `5 minutes` | 1-24 小時：每 5 分鐘一個數據點  |
+| `hours > 24`      | `1 hour`    | 超過 24 小時：每 1 小時一個數據點 |
+
+**支援的 Interval 格式**:
+
+- 分鐘級: `1 minute`, `5 minutes`, `10 minutes`, `30 minutes`
+- 小時級: `1 hour`, `6 hours`, `12 hours`
+- 天級: `1 day`
+
+**請求範例**:
+
+```bash
+# 查詢最近 6 小時（使用預設 interval = 5 minutes）
+GET /api/v1/elasticsearch/status/1/history?hours=6
+
+# 查詢最近 24 小時，每 10 分鐘一個點
+GET /api/v1/elasticsearch/status/1/history?hours=24&interval=10 minutes
+
+# 查詢最近 7 天，每 1 小時一個點
+GET /api/v1/elasticsearch/status/1/history?hours=168&interval=1 hour
+```
+
+**回應範例**:
+
+```json
+{
+  "success": true,
+  "msg": "查詢成功",
+  "body": {
+    "monitor_id": 1,
+    "start_time": "2024-01-01T06:00:00Z",
+    "end_time": "2024-01-01T12:00:00Z",
+    "interval": "5 minutes",
+    "data": [
+      {
+        "time": "2024-01-01T06:00:00Z",
+        "cpu_usage": 45.2,
+        "memory_usage": 67.8,
+        "disk_usage": 52.3,
+        "jvm_heap_used_percent": 68.5,
+        "active_shards": 150,
+        "unassigned_shards": 0,
+        "nodes_count": 3
+      },
+      {
+        "time": "2024-01-01T06:05:00Z",
+        "cpu_usage": 46.1,
+        "memory_usage": 68.2,
+        "disk_usage": 52.3,
+        "jvm_heap_used_percent": 69.1,
+        "active_shards": 150,
+        "unassigned_shards": 0,
+        "nodes_count": 3
+      }
+    ]
+  }
+}
+```
+
+**設計考量**:
+
+- **自動 Interval 選擇**: 根據查詢範圍自動選擇合適的資料粒度，平衡精度與效能
+- **數據點控制**: 避免返回過多資料點（如 7 天查詢若用 1 分鐘間隔會有 10,080 個點）
+- **TimescaleDB 優化**: 使用 `time_bucket()` 函數進行時間聚合，查詢效率高
+- **彈性覆蓋**: 前端可根據需求手動指定 interval 參數
 
 ---
 
@@ -552,6 +728,7 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 已認證
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -578,12 +755,14 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 已認證
 
 **查詢參數**:
+
 - `logname`: (可選) 日誌名稱
 - `device_group`: (可選) 裝置群組
 - `start_date`: (必填) 開始日期（YYYY-MM-DD）
 - `end_date`: (必填) 結束日期（YYYY-MM-DD）
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -622,10 +801,12 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 已認證
 
 **查詢參數**:
+
 - `start_time`: 開始時間
 - `end_time`: 結束時間
 
 **回應範例**:
+
 ```json
 {
   "code": 200,
@@ -661,9 +842,11 @@ Authorization: Bearer {your-jwt-token}
 **權限**: 已認證
 
 **路徑參數**:
+
 - `logname`: 日誌名稱
 
 **查詢參數**:
+
 - `device_name`: (可選) 裝置名稱
 - `start_time`: (可選) 開始時間
 - `end_time`: (可選) 結束時間
@@ -685,13 +868,13 @@ Authorization: Bearer {your-jwt-token}
 
 ### 9.2 常見錯誤碼
 
-| code | 說明 | 解決方式 |
-|------|------|---------|
-| 401 | JWT 令牌無效或過期 | 重新登入取得新令牌 |
-| 403 | 權限不足 | 聯繫管理員授予相應權限 |
-| 404 | 資源不存在 | 檢查請求的 ID 是否正確 |
-| 422 | 資料驗證失敗 | 檢查請求參數格式 |
-| 500 | 伺服器內部錯誤 | 聯繫技術支援 |
+| code | 說明          | 解決方式          |
+| ---- | ----------- | ------------- |
+| 401  | JWT 令牌無效或過期 | 重新登入取得新令牌     |
+| 403  | 權限不足        | 聯繫管理員授予相應權限   |
+| 404  | 資源不存在       | 檢查請求的 ID 是否正確 |
+| 422  | 資料驗證失敗      | 檢查請求參數格式      |
+| 500  | 伺服器內部錯誤     | 聯繫技術支援        |
 
 ---
 
@@ -744,6 +927,7 @@ curl -X GET http://localhost:8006/api/v1/dashboard/overview \
 **URL**: `http://your-server:8006/swagger/index.html`
 
 Swagger 文件包含：
+
 - 所有端點的詳細說明
 - 請求/回應範例
 - 互動式測試介面
@@ -756,6 +940,7 @@ Swagger 文件包含：
 當前版本：**v1**
 
 未來版本更新規則：
+
 - **向下相容變更**：在 v1 中直接更新
 - **破壞性變更**：發布新版本（v2, v3...）
 - **舊版本支援期**：至少 6 個月

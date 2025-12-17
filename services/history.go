@@ -141,7 +141,7 @@ func DataDealing(logname string) models.Response {
 		// fmt.Println(history_tmp_data)
 		// fmt.Println(len(history_tmp_data))
 	}
-	fmt.Println(history_final_data)
+	// fmt.Println(history_final_data)
 	// fmt.Println(len(history_final_data))
 	res.Body = history_final_data
 	res.Success = true

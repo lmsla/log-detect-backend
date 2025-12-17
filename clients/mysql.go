@@ -20,6 +20,13 @@ func LoadDatabase() {
 	dbname := global.EnvConfig.Database.Db
 	parameter := global.EnvConfig.Database.Params
 
+	fmt.Println("host", host)
+	fmt.Println("port", port)
+	fmt.Println("user", user)
+	fmt.Println("password", password)
+	fmt.Println("dbname", dbname)
+	fmt.Println("parameter", parameter)
+
 	// var err error
 	err := errors.New("mock error")
 	for err != nil {

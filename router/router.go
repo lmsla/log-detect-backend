@@ -87,6 +87,22 @@ func LoadRouter() *gin.Engine {
 		deviceGroup.GET("/GetGroup", controller.GetDeviceGroup)
 	}
 
+	// Protected DeviceGroup routes
+	deviceGroupGroup := apiv1.Group("/DeviceGroup")
+	deviceGroupGroup.Use(middleware.AuthMiddleware())
+	deviceGroupGroup.Use(middleware.PermissionMiddleware("device", "read"))
+	{
+		deviceGroupGroup.POST("/Create", controller.CreateDeviceGroup).Use(middleware.PermissionMiddleware("device", "create"))
+		deviceGroupGroup.GET("/GetAll", controller.GetAllDeviceGroups)
+		deviceGroupGroup.GET("/Get/:id", controller.GetDeviceGroupByID)
+		deviceGroupGroup.PUT("/Update", controller.UpdateDeviceGroup).Use(middleware.PermissionMiddleware("device", "update"))
+		deviceGroupGroup.DELETE("/Delete/:id", controller.DeleteDeviceGroup).Use(middleware.PermissionMiddleware("device", "delete"))
+
+		// Batch operations
+		deviceGroupGroup.POST("/MoveDevices", controller.MoveDevicesToGroup).Use(middleware.PermissionMiddleware("device", "update"))
+		deviceGroupGroup.POST("/MoveGroupDevices", controller.MoveGroupDevices).Use(middleware.PermissionMiddleware("device", "update"))
+	}
+
 	// Protected Indices routes
 	indicesGroup := apiv1.Group("/Indices")
 	indicesGroup.Use(middleware.AuthMiddleware())

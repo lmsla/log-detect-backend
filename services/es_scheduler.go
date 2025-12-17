@@ -19,6 +19,7 @@ type ESMonitorJob struct {
 	Monitor  entities.ElasticsearchMonitor
 	Ticker   *time.Ticker
 	StopChan chan bool
+	stopOnce sync.Once // 確保 channel 只關閉一次
 }
 
 var (
@@ -128,8 +129,10 @@ func (s *ESMonitorScheduler) StopMonitor(monitorID int) error {
 		return fmt.Errorf("monitor %d not found in scheduler", monitorID)
 	}
 
-	// 發送停止信號
-	close(job.StopChan)
+	// 使用 sync.Once 確保 channel 只關閉一次
+	job.stopOnce.Do(func() {
+		close(job.StopChan)
+	})
 
 	// 從 map 中移除
 	delete(s.monitors, monitorID)
@@ -187,7 +190,10 @@ func (s *ESMonitorScheduler) StopAll() {
 	log.Logrecord_no_rotate("INFO", "Stopping all ES monitors...")
 
 	for id, job := range s.monitors {
-		close(job.StopChan)
+		// 使用 sync.Once 確保 channel 只關閉一次
+		job.stopOnce.Do(func() {
+			close(job.StopChan)
+		})
 		log.Logrecord_no_rotate("INFO", fmt.Sprintf("Stopped ES monitor: %d", id))
 	}
 

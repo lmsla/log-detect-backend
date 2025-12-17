@@ -19,6 +19,7 @@ type BatchWriter struct {
 	mutex         sync.Mutex
 	ticker        *time.Ticker
 	stopChan      chan struct{}
+	stopOnce      sync.Once // 確保 channel 只關閉一次
 	stmt          *sql.Stmt
 	esStmt        *sql.Stmt
 }
@@ -82,6 +83,9 @@ func (bw *BatchWriter) startFlushRoutine() {
 			if bw.stmt != nil {
 				bw.stmt.Close()
 			}
+			if bw.esStmt != nil {
+				bw.esStmt.Close()
+			}
 			return
 		}
 	}
@@ -123,6 +127,13 @@ func (bw *BatchWriter) flushBatch() {
 // flushDeviceMetrics 刷新設備監控批次
 func (bw *BatchWriter) flushDeviceMetrics() {
 	if len(bw.batch) == 0 {
+		return
+	}
+
+	// 檢查 prepared statement 是否已初始化
+	if bw.stmt == nil {
+		log.Logrecord_no_rotate("ERROR", "Device metrics prepared statement is nil, skipping flush")
+		bw.batch = bw.batch[:0]
 		return
 	}
 
@@ -221,5 +232,8 @@ func (bw *BatchWriter) flushESMetrics() {
 // Stop 停止批量寫入服務
 func (bw *BatchWriter) Stop() {
 	bw.ticker.Stop()
-	close(bw.stopChan)
+	// 使用 sync.Once 確保 channel 只關閉一次
+	bw.stopOnce.Do(func() {
+		close(bw.stopChan)
+	})
 }

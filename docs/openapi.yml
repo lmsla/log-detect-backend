@@ -462,8 +462,82 @@ paths:
     get:
       tags:
         - Device Management
-      summary: Get Device Groups
-      description: Get all device groups
+      summary: Get Device Groups (Legacy)
+      description: |
+        Get all device groups with device count statistics.
+
+        **⚠️ Legacy Endpoint**: This endpoint is maintained for backward compatibility.
+        New applications should use `/api/v1/DeviceGroup/GetAll` instead.
+
+        **Backward Compatibility**:
+        - Returns `device_group` field instead of `name` (legacy field name)
+        - Includes device count statistics
+        - Response format differs from new endpoints
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Device groups retrieved (legacy format)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceGroupLegacy'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # DeviceGroup Management endpoints
+  /api/v1/DeviceGroup/Create:
+    post:
+      tags:
+        - DeviceGroup Management
+      summary: Create Device Group
+      description: Create a new device group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceGroupCreate'
+      responses:
+        '200':
+          description: Device group created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceGroupDetail'
+        '400':
+          description: Bad Request (e.g., group name already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/GetAll:
+    get:
+      tags:
+        - DeviceGroup Management
+      summary: Get All Device Groups
+      description: Get all device groups with device count statistics
       security:
         - bearerAuth: []
       responses:
@@ -474,9 +548,261 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/DeviceGroup'
+                  $ref: '#/components/schemas/DeviceGroupWithCount'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/Get/{id}:
+    get:
+      tags:
+        - DeviceGroup Management
+      summary: Get Device Group by ID
+      description: Get a specific device group with device count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Device group ID
+      responses:
+        '200':
+          description: Device group retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceGroupWithCount'
+        '400':
+          description: Bad Request (invalid ID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Device group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/Update:
+    put:
+      tags:
+        - DeviceGroup Management
+      summary: Update Device Group
+      description: |
+        Update an existing device group.
+
+        **Required Fields**:
+        - `id` (integer): Device group ID to update
+        - `name` (string): Device group name
+
+        **Optional Fields**:
+        - `description` (string): Device group description
+
+        **Note**: The `id` and `name` fields are required to identify and update the group.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceGroupDetail'
+            example:
+              id: 1
+              name: "Web Servers - Production"
+              description: "Updated description for production web servers"
+      responses:
+        '200':
+          description: Device group updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceGroupDetail'
+        '400':
+          description: Bad Request (e.g., group does not exist, missing required fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/Delete/{id}:
+    delete:
+      tags:
+        - DeviceGroup Management
+      summary: Delete Device Group
+      description: Delete a device group (only allowed if group is empty)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Device group ID
+      responses:
+        '200':
+          description: Device group deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Delete device group success"
+        '400':
+          description: Bad Request (e.g., group still has devices)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "cannot delete device group: 5 devices still in this group"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/MoveDevices:
+    post:
+      tags:
+        - DeviceGroup Management
+      summary: Move Devices to Another Group (Batch)
+      description: |
+        Move selected devices to another device group by device IDs.
+
+        **Use Cases**:
+        - Move specific devices from multiple groups to a target group
+        - Reorganize devices across groups
+        - Prepare for deleting a group (move its devices first)
+
+        **Required Fields**:
+        - `device_ids` (array of integers): List of device IDs to move
+        - `target_group_name` (string): Name of the target group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveDevicesRequest'
+            example:
+              device_ids: [1, 2, 3, 5, 8]
+              target_group_name: "Web Servers"
+      responses:
+        '200':
+          description: Devices moved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoveDevicesResponse'
+        '400':
+          description: Bad Request (e.g., target group does not exist, empty device list)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/DeviceGroup/MoveGroupDevices:
+    post:
+      tags:
+        - DeviceGroup Management
+      summary: Move All Devices Between Groups
+      description: |
+        Move all devices from one group to another group.
+
+        **Use Cases**:
+        - Merge two groups (move all devices from source to target)
+        - Prepare for deleting a group (move all devices first)
+        - Reorganize group structure
+
+        **Required Fields**:
+        - `source_group_name` (string): Name of the source group
+        - `target_group_name` (string): Name of the target group
+
+        **Note**: After this operation, the source group will be empty and can be deleted.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveGroupDevicesRequest'
+            example:
+              source_group_name: "Old Servers"
+              target_group_name: "Legacy Systems"
+      responses:
+        '200':
+          description: All devices moved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoveGroupDevicesResponse'
+        '400':
+          description: Bad Request (e.g., group does not exist, same source and target)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (insufficient permissions)
           content:
             application/json:
               schema:
@@ -2421,6 +2747,143 @@ components:
           example: "firewall"
       required:
         - device_group
+
+    # DeviceGroup management schemas
+    DeviceGroupCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Device group name
+          example: "Web Servers"
+        description:
+          type: string
+          description: Device group description
+          example: "All web servers in production"
+      required:
+        - name
+
+    DeviceGroupDetail:
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: integer
+              description: Device group ID
+              example: 1
+            name:
+              type: string
+              description: Device group name
+              example: "Web Servers"
+            description:
+              type: string
+              description: Device group description
+              example: "All web servers in production"
+
+    DeviceGroupWithCount:
+      allOf:
+        - $ref: '#/components/schemas/DeviceGroupDetail'
+        - type: object
+          properties:
+            device_count:
+              type: integer
+              description: Number of devices in this group
+              example: 5
+
+    DeviceGroupLegacy:
+      description: Legacy response format for backward compatibility (GET /Device/GetGroup)
+      allOf:
+        - $ref: '#/components/schemas/CommonFields'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: Device group ID
+              example: 1
+            device_group:
+              type: string
+              description: Device group name (legacy field name for backward compatibility)
+              example: "Web Servers"
+            description:
+              type: string
+              description: Device group description
+              example: "All web servers in production"
+            device_count:
+              type: integer
+              description: Number of devices in this group
+              example: 5
+
+    # DeviceGroup batch operations schemas
+    MoveDevicesRequest:
+      type: object
+      required:
+        - device_ids
+        - target_group_name
+      properties:
+        device_ids:
+          type: array
+          items:
+            type: integer
+          description: List of device IDs to move
+          example: [1, 2, 3, 5, 8]
+          minItems: 1
+        target_group_name:
+          type: string
+          description: Name of the target group
+          example: "Web Servers"
+
+    MoveDevicesResponse:
+      type: object
+      properties:
+        moved_count:
+          type: integer
+          description: Number of devices successfully moved
+          example: 5
+        target_group_name:
+          type: string
+          description: Name of the target group
+          example: "Web Servers"
+        device_ids:
+          type: array
+          items:
+            type: integer
+          description: List of device IDs that were moved
+          example: [1, 2, 3, 5, 8]
+
+    MoveGroupDevicesRequest:
+      type: object
+      required:
+        - source_group_name
+        - target_group_name
+      properties:
+        source_group_name:
+          type: string
+          description: Name of the source group
+          example: "Old Servers"
+        target_group_name:
+          type: string
+          description: Name of the target group
+          example: "Legacy Systems"
+
+    MoveGroupDevicesResponse:
+      type: object
+      properties:
+        moved_count:
+          type: integer
+          description: Number of devices successfully moved
+          example: 12
+        source_group_name:
+          type: string
+          description: Name of the source group
+          example: "Old Servers"
+        target_group_name:
+          type: string
+          description: Name of the target group
+          example: "Legacy Systems"
 
     # Target management schemas
     Target:

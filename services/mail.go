@@ -192,7 +192,7 @@ func mailWithNoAuth(addr string, to []string, msg []byte) bool {
 	}
 
 	// Send the email body.
-	wc, _ := c.Data()
+	wc, err := c.Data()
 	if err != nil {
 		log.Printf("[Error] Failed to send email (No Auth) by Data, err:%s\n", err)
 		return false

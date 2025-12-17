@@ -152,6 +152,273 @@ const docTemplate = `{
                 }
             }
         },
+        "/ESConnection/Create": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Create ES Connection",
+                "parameters": [
+                    {
+                        "description": "es_connection",
+                        "name": "ESConnection",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entities.ESConnection"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/Delete/{id}": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Delete ES Connection",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/Get/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Get ES Connection",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/GetAll": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Get All ES Connections",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/Reload/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Reload ES Connection",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/ReloadAll": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Reload All ES Connections",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/SetDefault/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Set Default ES Connection",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/Test": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Test ES Connection",
+                "parameters": [
+                    {
+                        "description": "es_connection",
+                        "name": "ESConnection",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entities.ESConnection"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/ESConnection/Update": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ESConnection"
+                ],
+                "summary": "Update ES Connection",
+                "parameters": [
+                    {
+                        "description": "es_connection",
+                        "name": "ESConnection",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entities.ESConnection"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/History/GetData/{logname}": {
             "get": {
                 "consumes": [
@@ -1143,37 +1410,6 @@ const docTemplate = `{
                     "Elasticsearch"
                 ],
                 "summary": "Delete ES Monitor",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Monitor ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/elasticsearch/monitors/{id}/test": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Elasticsearch"
-                ],
-                "summary": "Test ES Connection",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2302,6 +2538,51 @@ const docTemplate = `{
                 }
             }
         },
+        "entities.ESConnection": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "deleted_at": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enable_auth": {
+                    "type": "boolean"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_default": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "description": "omitempty 避免在 JSON 中返回密碼",
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "use_tls": {
+                    "type": "boolean"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "entities.ElasticsearchMonitor": {
             "type": "object",
             "properties": {
@@ -2337,14 +2618,15 @@ const docTemplate = `{
                 "disk_usage_high": {
                     "type": "number"
                 },
-                "enable_auth": {
-                    "type": "boolean"
-                },
                 "enable_monitor": {
                     "type": "boolean"
                 },
-                "host": {
-                    "type": "string"
+                "es_connection": {
+                    "$ref": "#/definitions/entities.ESConnection"
+                },
+                "es_connection_id": {
+                    "description": "ES 連線配置（必填，統一使用 es_connections 表）",
+                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"
@@ -2360,12 +2642,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "port": {
-                    "type": "integer"
                 },
                 "receivers": {
                     "type": "array",
@@ -2387,9 +2663,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "integer"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },
@@ -2404,6 +2677,13 @@ const docTemplate = `{
                 },
                 "device_group": {
                     "type": "string"
+                },
+                "es_connection": {
+                    "$ref": "#/definitions/entities.ESConnection"
+                },
+                "es_connection_id": {
+                    "description": "ES 連線配置（關聯到 es_connections 表）",
+                    "type": "integer"
                 },
                 "field": {
                     "type": "string"

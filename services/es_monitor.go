@@ -745,8 +745,11 @@ func (s *ESMonitorService) CreateAlert(monitor entities.ElasticsearchMonitor, al
 	query := `
 		INSERT INTO es_alert_history (
 			time, monitor_id, alert_type, severity, status, message,
-			cluster_name, threshold_value, actual_value, metadata
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			cluster_name, threshold_value, actual_value,
+			resolved_at, resolved_by, resolution_note,
+			acknowledged_at, acknowledged_by,
+			metadata
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`
 
 	_, err := global.TimescaleDB.Exec(
@@ -760,6 +763,11 @@ func (s *ESMonitorService) CreateAlert(monitor entities.ElasticsearchMonitor, al
 		alert.ClusterName,
 		alert.ThresholdValue,
 		alert.ActualValue,
+		nil, // resolved_at - 創建時為 NULL
+		nil, // resolved_by - 創建時為 NULL
+		nil, // resolution_note - 創建時為 NULL
+		nil, // acknowledged_at - 創建時為 NULL
+		nil, // acknowledged_by - 創建時為 NULL
 		metadata,
 	)
 

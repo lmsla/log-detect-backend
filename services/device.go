@@ -122,14 +122,35 @@ func GetDeviceGroup() models.Response {
 	res := models.Response{}
 	res.Success = false
 
-	var groups []entities.GroupName
-	err := global.Mysql.Model(&entities.Device{}).Distinct("device_group").Pluck("device_group", &groups).Error
+	// 從 device_groups 表查詢所有群組（含設備數量統計）
+	type DeviceGroupWithCount struct {
+		ID          int    `json:"id"`
+		Name        string `json:"device_group"` // 保持與前端相容的欄位名稱
+		Description string `json:"description"`
+		DeviceCount int64  `json:"device_count"`
+	}
+
+	var groups []entities.DeviceGroup
+	err := global.Mysql.Find(&groups).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error find device_group: %s",err.Error()))
 		return res
 	}
 
-	res.Body = groups
+	// 為每個群組統計設備數量
+	var result []DeviceGroupWithCount
+	for _, group := range groups {
+		var count int64
+		global.Mysql.Model(&entities.Device{}).Where("device_group = ?", group.Name).Count(&count)
+		result = append(result, DeviceGroupWithCount{
+			ID:          group.ID,
+			Name:        group.Name,
+			Description: group.Description,
+			DeviceCount: count,
+		})
+	}
+
+	res.Body = result
 	res.Success = true
 	return res
 }

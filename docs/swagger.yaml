@@ -45,6 +45,36 @@ definitions:
       updated_at:
         type: integer
     type: object
+  entities.ESConnection:
+    properties:
+      created_at:
+        type: integer
+      deleted_at:
+        type: integer
+      description:
+        type: string
+      enable_auth:
+        type: boolean
+      host:
+        type: string
+      id:
+        type: integer
+      is_default:
+        type: boolean
+      name:
+        type: string
+      password:
+        description: omitempty 避免在 JSON 中返回密碼
+        type: string
+      port:
+        type: integer
+      updated_at:
+        type: integer
+      use_tls:
+        type: boolean
+      username:
+        type: string
+    type: object
   entities.ElasticsearchMonitor:
     properties:
       alert_dedupe_window:
@@ -69,12 +99,13 @@ definitions:
         type: number
       disk_usage_high:
         type: number
-      enable_auth:
-        type: boolean
       enable_monitor:
         type: boolean
-      host:
-        type: string
+      es_connection:
+        $ref: '#/definitions/entities.ESConnection'
+      es_connection_id:
+        description: ES 連線配置（必填，統一使用 es_connections 表）
+        type: integer
       id:
         type: integer
       interval:
@@ -85,10 +116,6 @@ definitions:
         type: number
       name:
         type: string
-      password:
-        type: string
-      port:
-        type: integer
       receivers:
         items:
           type: string
@@ -103,8 +130,6 @@ definitions:
         type: integer
       updated_at:
         type: integer
-      username:
-        type: string
     type: object
   entities.Index:
     properties:
@@ -114,6 +139,11 @@ definitions:
         type: integer
       device_group:
         type: string
+      es_connection:
+        $ref: '#/definitions/entities.ESConnection'
+      es_connection_id:
+        description: ES 連線配置（關聯到 es_connections 表）
+        type: integer
       field:
         type: string
       id:
@@ -386,6 +416,177 @@ paths:
       summary: Count Device
       tags:
       - Device
+  /ESConnection/Create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: es_connection
+        in: body
+        name: ESConnection
+        required: true
+        schema:
+          $ref: '#/definitions/entities.ESConnection'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/Delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Delete ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/Get/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/GetAll:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get All ES Connections
+      tags:
+      - ESConnection
+  /ESConnection/Reload/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Reload ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/ReloadAll:
+    put:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Reload All ES Connections
+      tags:
+      - ESConnection
+  /ESConnection/SetDefault/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Set Default ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/Test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: es_connection
+        in: body
+        name: ESConnection
+        required: true
+        schema:
+          $ref: '#/definitions/entities.ESConnection'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Test ES Connection
+      tags:
+      - ESConnection
+  /ESConnection/Update:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: es_connection
+        in: body
+        name: ESConnection
+        required: true
+        schema:
+          $ref: '#/definitions/entities.ESConnection'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Update ES Connection
+      tags:
+      - ESConnection
   /History/GetData/{logname}:
     get:
       consumes:
@@ -1031,26 +1232,6 @@ paths:
           schema:
             $ref: '#/definitions/models.Response'
       summary: Get ES Monitor by ID
-      tags:
-      - Elasticsearch
-  /api/v1/elasticsearch/monitors/{id}/test:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Monitor ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Response'
-      summary: Test ES Connection
       tags:
       - Elasticsearch
   /api/v1/elasticsearch/monitors/{id}/toggle:

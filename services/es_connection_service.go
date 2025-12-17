@@ -131,6 +131,10 @@ func UpdateESConnection(connection entities.ESConnection) models.Response {
 		if connection.Password == "" {
 			connection.Password = existing.Password
 		}
+	} else {
+		// 禁用認證時，清除認證資訊
+		connection.Username = ""
+		connection.Password = ""
 	}
 
 	// 驗證連線配置

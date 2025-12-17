@@ -46,6 +46,14 @@ type Index struct {
 	ESConnection   *ESConnection `gorm:"foreignKey:ESConnectionID" json:"es_connection,omitempty"`
 }
 
+// DeviceGroup 設備群組
+type DeviceGroup struct {
+	models.Common
+	ID          int    `gorm:"primaryKey;index" json:"id" form:"id"`
+	Name        string `gorm:"type:varchar(50);not null;uniqueIndex" json:"name" form:"name"`
+	Description string `gorm:"type:varchar(255)" json:"description" form:"description"`
+}
+
 type Device struct {
 	models.Common
 	ID          int    `gorm:"primaryKey;index" json:"id" form:"id"`
