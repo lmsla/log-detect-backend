@@ -13,6 +13,15 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Debug PATH on runner
+        shell: bash
+        run: |
+          whoami
+          hostname
+          echo "PATH=$PATH"
+          command -v go || true
+          ls -l /usr/local/go/bin/go || true
+
       - name: Show Go version
         run: go version
 
