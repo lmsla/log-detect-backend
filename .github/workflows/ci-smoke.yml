@@ -31,3 +31,7 @@ jobs:
 
       - name: Go build
         run: go build ./...
+
+      - name: Docker build
+        run: docker build -t log-detect-backend:ci .
+
