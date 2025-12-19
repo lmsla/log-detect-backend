@@ -4,26 +4,27 @@ on:
   push:
     branches:
       - develop
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   smoke:
     runs-on: self-hosted
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Debug PATH on runner
-        shell: bash
-        run: |
-          whoami
-          hostname
-          echo "PATH=$PATH"
-          command -v go || true
-          ls -l /usr/local/go/bin/go || true
+      # 方案B（推薦）：用官方 action 安裝/掛載 Go，避免依賴 runner 系統 PATH
+      - name: Setup Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Show Go version
-        run: go version
+        run: |
+          which go
+          go version
 
       - name: Go test
         run: go test ./...
