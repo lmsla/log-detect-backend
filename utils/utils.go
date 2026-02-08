@@ -23,6 +23,12 @@ func loadConfigFile() {
 	configViper.AddConfigPath(".")
 
 	if err := configViper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("未發現 config.yml，跳過配置載入（適用於 API 模式）")
+			global.TargetStruct = &structs.TargetStruct{}
+			global.YMLConfig = &structs.YMLConfig{}
+			return
+		}
 		panic(err)
 	}
 
