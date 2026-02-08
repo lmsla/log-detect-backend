@@ -115,6 +115,82 @@ func Mail4(receiver, cc, bcc []string, subject string, logname string, removed [
 
 }
 
+func Mail4WithHA(receiver, cc, bcc []string, subject string, logname string, removed []string, haInfo map[string]string) {
+	user := global.EnvConfig.Email.User
+	password := global.EnvConfig.Email.Password
+	host := global.EnvConfig.Email.Host
+	port := global.EnvConfig.Email.Port
+
+	// 將 removed 數組轉換為 HTML 表格（含 HA Group 欄位）
+	tableRows := ""
+	for i, item := range removed {
+		haGroup := haInfo[item]
+		haDisplay := "-"
+		if haGroup != "" {
+			haDisplay = haGroup + " (全組失聯)"
+		}
+		tableRows += fmt.Sprintf("<tr><td>%d</td><td>%s</td><td>%s</td></tr>", i+1, item, haDisplay)
+	}
+	table := fmt.Sprintf(`
+		<table border="2" style="border-collapse:collapse;table-layout:auto;text-align:left;">
+			<tr>
+				<th>#</th>
+				<th>Host</th>
+				<th>HA Group</th>
+			</tr>
+			%s
+		</table>`, tableRows)
+
+	body := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<title>%s</title>
+			<style>
+				table {
+					border-collapse: collapse;
+					table-layout: auto;
+				}
+				th, td {
+					padding: 8px 12px;
+					border: 1px solid #ddd;
+					text-align: left;
+					white-space: nowrap;
+				}
+			</style>
+		</head>
+		<body>
+			<p>%s 日誌，失聯主機如下：</p>
+			%s
+		</body>
+		</html>`, subject, logname, table)
+
+	var mail Mail
+
+	if user == "" {
+		mail = &SendMail{host: host, port: port}
+	} else {
+		mail = &SendMail{user: user, password: password, host: host, port: port}
+	}
+
+	message := Message{
+		from:        global.EnvConfig.Email.Sender,
+		to:          receiver,
+		subject:     subject,
+		body:        body,
+		contentType: "text/html;charset=utf-8",
+	}
+
+	err := newFunction(mail, message)
+	if err != nil {
+		fmt.Println("Fail to send Email")
+		fmt.Println(err)
+	} else {
+		fmt.Println("Success to send Email")
+	}
+}
+
 func (r *Request) SendEmailTest4() (bool, error) {
 
 	var stringMsg string

@@ -12,27 +12,67 @@ func LoadEnvironment() {
 	loadSettingFile()
 	viperSettingToModel()
 	loadConfigFile()
+	loadDevicesFile()
 	viperconfigToModel()
 }
 
 func loadConfigFile() {
-	// var configViperConfig = viper.New()
-	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-	viper.AddConfigPath(".")
-	//读取配置文件内容
-	if err := viper.ReadInConfig(); err != nil {
+	configViper := viper.New()
+	configViper.SetConfigName("config")
+	configViper.SetConfigType("yml")
+	configViper.AddConfigPath(".")
+
+	if err := configViper.ReadInConfig(); err != nil {
 		panic(err)
 	}
+
+	// 保留原有的 TargetStruct 解析（向後相容）
 	var c structs.TargetStruct
-	if err := viper.Unmarshal(&c); err != nil {
+	if err := configViper.Unmarshal(&c); err != nil {
 		panic(err)
 	}
-
-
 	global.TargetStruct = &c
+
+	// 解析擴充格式到 YMLConfig（用於 YML-to-DB 同步）
+	var ymlConfig structs.YMLConfig
+	if err := configViper.Unmarshal(&ymlConfig); err != nil {
+		fmt.Printf("Warning: could not unmarshal expanded config.yml: %v\n", err)
+	}
+	global.YMLConfig = &ymlConfig
 }
 
+
+// loadDevicesFile 載入獨立的 devices.yml 裝置配置檔
+// 如果檔案不存在則跳過（不影響啟動）
+func loadDevicesFile() {
+	devicesViper := viper.New()
+	devicesViper.SetConfigName("devices")
+	devicesViper.SetConfigType("yml")
+	devicesViper.AddConfigPath(".")
+
+	if err := devicesViper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("未發現 devices.yml，跳過裝置配置載入")
+			return
+		}
+		fmt.Printf("Warning: 讀取 devices.yml 失敗: %v\n", err)
+		return
+	}
+
+	var devicesConfig struct {
+		Devices []structs.YMLDeviceGroup `yaml:"devices" mapstructure:"devices"`
+	}
+	if err := devicesViper.Unmarshal(&devicesConfig); err != nil {
+		fmt.Printf("Warning: 解析 devices.yml 失敗: %v\n", err)
+		return
+	}
+
+	if global.YMLConfig == nil {
+		global.YMLConfig = &structs.YMLConfig{}
+	}
+	global.YMLConfig.Devices = devicesConfig.Devices
+	fmt.Printf("已從 devices.yml 載入 %d 個裝置群組\n", len(devicesConfig.Devices))
+}
 
 func viperconfigToModel() {
 	// var c structs.ActionStruct
@@ -128,6 +168,15 @@ func viperSettingToModel() {
 	config.Email.DisableTLS = viper.GetBool("email.disable_tls")
 	config.Email.Auth = viper.GetBool("email.auth")
 
+	// Features（功能模組開關）
+	config.Features.TimescaleDB = viper.GetBool("features.timescaledb")
+	config.Features.ESMonitoring = viper.GetBool("features.es_monitoring")
+	config.Features.Dashboard = viper.GetBool("features.dashboard")
+	config.Features.Auth = viper.GetBool("features.auth")
+	config.Features.History = viper.GetBool("features.history")
+
+	// ConfigSource（配置來源）
+	config.ConfigSource = viper.GetString("config_source")
+
 	global.EnvConfig = &config
-	// global.Action = &action
 }

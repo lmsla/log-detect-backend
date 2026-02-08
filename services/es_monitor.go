@@ -342,7 +342,7 @@ func (s *ESMonitorService) extractMemoryUsage(nodeInfo map[string]interface{}) f
 }
 
 func (s *ESMonitorService) extractDiskUsage(nodeInfo map[string]interface{}) float64 {
-	totalUsed := int64(0)
+	totalCapacity := int64(0)
 	totalAvailable := int64(0)
 
 	if nodes, ok := nodeInfo["nodes"].(map[string]interface{}); ok {
@@ -350,9 +350,11 @@ func (s *ESMonitorService) extractDiskUsage(nodeInfo map[string]interface{}) flo
 			if nodeMap, ok := node.(map[string]interface{}); ok {
 				if fs, ok := nodeMap["fs"].(map[string]interface{}); ok {
 					if total, ok := fs["total"].(map[string]interface{}); ok {
-						if usedBytes, ok := total["total_in_bytes"].(float64); ok {
-							totalUsed += int64(usedBytes)
+						// total_in_bytes 是磁碟總容量
+						if capacityBytes, ok := total["total_in_bytes"].(float64); ok {
+							totalCapacity += int64(capacityBytes)
 						}
+						// available_in_bytes 是可用空間
 						if availableBytes, ok := total["available_in_bytes"].(float64); ok {
 							totalAvailable += int64(availableBytes)
 						}
@@ -362,9 +364,11 @@ func (s *ESMonitorService) extractDiskUsage(nodeInfo map[string]interface{}) flo
 		}
 	}
 
-	totalSize := totalUsed + totalAvailable
-	if totalSize > 0 {
-		return float64(totalUsed) / float64(totalSize) * 100
+	// 正確計算：已用 = 總容量 - 可用空間
+	// disk_usage = (total - available) / total * 100
+	if totalCapacity > 0 {
+		usedBytes := totalCapacity - totalAvailable
+		return float64(usedBytes) / float64(totalCapacity) * 100
 	}
 	return 0.0
 }

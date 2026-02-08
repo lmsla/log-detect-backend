@@ -127,12 +127,18 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		return
 	}
 
-	fmt.Println("遺失的設備: ", removed)
+	// === HA Group 過濾 ===
+	trulyRemoved, standbyDevices := filterHAGroups(device_group, removed, intersection)
+
+	fmt.Println("真正失聯的設備: ", trulyRemoved)
+	fmt.Println("HA 待命的設備: ", standbyDevices)
+
 	cc := []string{""}
 	bcc := []string{""}
-	if removed != nil {
-		// SendEmail(receiver,subject,logname,removed)
-		Mail4(receiver, cc, bcc, subject, logname, removed)
+	if len(trulyRemoved) > 0 {
+		// 取得 HA 群組資訊用於郵件
+		haInfo := getHAGroupInfo(device_group, trulyRemoved)
+		Mail4WithHA(receiver, cc, bcc, subject, logname, trulyRemoved, haInfo)
 		mailHistory := entities.MailHistory{
 			Date:    date_time,
 			Time:    hour_time,
@@ -141,85 +147,164 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		}
 		CreateMailHistory(mailHistory)
 	}
-	// 紀錄檢查結果到歷史記錄中
+
+	// 紀錄在線設備到歷史記錄中
 	for _, device := range intersection {
 		historyData := entities.History{
-			// 基本信息
-			Logname:     logname,
-			DeviceGroup: device_group,
-			Name:        device,
-
-			// 檢查結果
-			Status:  "online",
-			Lost:    "false",
-			LostNum: 0,
-
-			// 時間信息
-			Date:      date_time,
-			Time:      hour_time,
-			DateTime:  timenow,
-			Timestamp: execute_time.Unix(),
-
-			// 檢查配置
-			Period: period,
-			Unit:   unit,
-
-			// 性能指標 (模擬數據)
-			ResponseTime: 100, // 模擬響應時間
-			DataCount:    1,   // 檢查到的數據量
+			Logname:      logname,
+			DeviceGroup:  device_group,
+			Name:         device,
+			Status:       "online",
+			Lost:         "false",
+			LostNum:      0,
+			Date:         date_time,
+			Time:         hour_time,
+			DateTime:     timenow,
+			Timestamp:    execute_time.Unix(),
+			Period:       period,
+			Unit:         unit,
+			ResponseTime: 100,
+			DataCount:    1,
 		}
 
-		Insert_HistoryData(historyData)
-		if global.BatchWriter != nil {
-			if err := global.BatchWriter.AddHistory(historyData); err != nil {
-				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
+		// === Feature Toggle: History ===
+		if global.EnvConfig.Features.History {
+			if global.BatchWriter != nil {
+				if err := global.BatchWriter.AddHistory(historyData); err != nil {
+					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
+				}
 			}
 		}
 	}
 
-	// 紀錄缺失設備到 history table 中
-	log.Logrecord_no_rotate("INFO", fmt.Sprintf("Processing %d offline devices", len(removed)))
-	for _, device := range removed {
-		log.Logrecord_no_rotate("INFO", fmt.Sprintf("Creating history record for offline device: %s", device))
+	// 紀錄真正失聯設備到 history table 中
+	log.Logrecord_no_rotate("INFO", fmt.Sprintf("Processing %d truly offline devices", len(trulyRemoved)))
+	for _, device := range trulyRemoved {
 		historyData := entities.History{
-			// 基本信息
-			Logname:     logname,
-			DeviceGroup: device_group,
-			Name:        device,
-
-			// 檢查結果
-			Status:  "offline",
-			Lost:    "true",
-			LostNum: 1,
-
-			// 時間信息
-			Date:      date_time,
-			Time:      hour_time,
-			DateTime:  timenow,
-			Timestamp: execute_time.Unix(),
-
-			// 檢查配置
-			Period: period,
-			Unit:   unit,
-
-			// 性能指標
-			ResponseTime: 0, // 離線設備無響應時間
-			DataCount:    0, // 離線設備無數據
-
-			// 錯誤信息
-			ErrorMsg:  "Device not found in logs",
-			ErrorCode: "DEVICE_OFFLINE",
+			Logname:      logname,
+			DeviceGroup:  device_group,
+			Name:         device,
+			Status:       "offline",
+			Lost:         "true",
+			LostNum:      1,
+			Date:         date_time,
+			Time:         hour_time,
+			DateTime:     timenow,
+			Timestamp:    execute_time.Unix(),
+			Period:       period,
+			Unit:         unit,
+			ResponseTime: 0,
+			DataCount:    0,
+			ErrorMsg:     "Device not found in logs",
+			ErrorCode:    "DEVICE_OFFLINE",
 		}
 
-		log.Logrecord_no_rotate("INFO", fmt.Sprintf("About to add history to batch for device: %s", device))
-		Insert_HistoryData(historyData)
-		if global.BatchWriter != nil {
-			if err := global.BatchWriter.AddHistory(historyData); err != nil {
-				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
-			} else {
-				log.Logrecord_no_rotate("INFO", fmt.Sprintf("Successfully added history record for offline device: %s", device))
+		// === Feature Toggle: History ===
+		if global.EnvConfig.Features.History {
+			if global.BatchWriter != nil {
+				if err := global.BatchWriter.AddHistory(historyData); err != nil {
+					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
+				}
 			}
 		}
 	}
 
+	// 紀錄 HA 待命設備到 history table 中
+	for _, device := range standbyDevices {
+		historyData := entities.History{
+			Logname:      logname,
+			DeviceGroup:  device_group,
+			Name:         device,
+			Status:       "standby",
+			Lost:         "false",
+			LostNum:      0,
+			Date:         date_time,
+			Time:         hour_time,
+			DateTime:     timenow,
+			Timestamp:    execute_time.Unix(),
+			Period:       period,
+			Unit:         unit,
+			ResponseTime: 0,
+			DataCount:    0,
+			ErrorMsg:     "HA standby - partner device is online",
+			ErrorCode:    "HA_STANDBY",
+		}
+
+		// === Feature Toggle: History ===
+		if global.EnvConfig.Features.History {
+			if global.BatchWriter != nil {
+				if err := global.BatchWriter.AddHistory(historyData); err != nil {
+					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for standby device %s: %s", device, err.Error()))
+				}
+			}
+		}
+	}
+
+}
+
+// filterHAGroups 根據 HA 群組過濾失聯裝置
+// 回傳 trulyRemoved（真正失聯，需告警）和 standbyDevices（HA 待命，不告警）
+func filterHAGroups(deviceGroup string, removed []string, online []string) (trulyRemoved []string, standbyDevices []string) {
+	if len(removed) == 0 {
+		return nil, nil
+	}
+
+	// 合併 removed + online 名稱，一次查詢所有裝置的 ha_group
+	allNames := append(append([]string{}, removed...), online...)
+	var devices []entities.Device
+	if err := global.Mysql.Where("device_group = ? AND name IN (?)", deviceGroup, allNames).Find(&devices).Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to query HA groups: %s", err.Error()))
+		// 查詢失敗時退回原始行為：所有 removed 都視為真正失聯
+		return removed, nil
+	}
+
+	// 建立 name → ha_group 映射
+	nameToHA := make(map[string]string)
+	for _, d := range devices {
+		nameToHA[d.Name] = d.HAGroup
+	}
+
+	// 建立 online 裝置的 ha_group 集合
+	onlineHAGroups := make(map[string]bool)
+	for _, name := range online {
+		haGroup := nameToHA[name]
+		if haGroup != "" {
+			onlineHAGroups[haGroup] = true
+		}
+	}
+
+	// 分類 removed 裝置
+	for _, name := range removed {
+		haGroup := nameToHA[name]
+		if haGroup == "" {
+			// 獨立裝置 → 真正失聯
+			trulyRemoved = append(trulyRemoved, name)
+		} else if onlineHAGroups[haGroup] {
+			// HA 群組中有成員在線 → 待命
+			standbyDevices = append(standbyDevices, name)
+		} else {
+			// HA 群組全部失聯 → 真正失聯
+			trulyRemoved = append(trulyRemoved, name)
+		}
+	}
+
+	return trulyRemoved, standbyDevices
+}
+
+// getHAGroupInfo 取得失聯裝置的 HA 群組資訊（用於郵件顯示）
+func getHAGroupInfo(deviceGroup string, trulyRemoved []string) map[string]string {
+	haInfo := make(map[string]string)
+	if len(trulyRemoved) == 0 {
+		return haInfo
+	}
+
+	var devices []entities.Device
+	if err := global.Mysql.Where("device_group = ? AND name IN (?)", deviceGroup, trulyRemoved).Find(&devices).Error; err != nil {
+		return haInfo
+	}
+
+	for _, d := range devices {
+		haInfo[d.Name] = d.HAGroup
+	}
+	return haInfo
 }

@@ -1,0 +1,20 @@
+# === Devices 裝置清單 ===
+# 預先定義裝置清單；若未設定，偵測時會自動從 ES 結果建立
+# ha_group 為空字串 = 獨立裝置；相同 ha_group 的裝置視為同一 HA 叢集
+#
+# 範例：
+# devices:
+#   - device_group: "forti"
+#     names:
+#       - name: "fw-01-primary"
+#         ha_group: "fw-cluster-01"
+#       - name: "fw-01-standby"
+#         ha_group: "fw-cluster-01"
+#       - name: "fw-02"
+#         ha_group: ""
+#   - device_group: "waf"
+#     names:
+#       - name: "waf-01"
+#         ha_group: ""
+#       - name: "waf-02"
+#         ha_group: ""

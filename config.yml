@@ -1,32 +1,60 @@
 #### timestring "2006-01-02 15:04:05"
-#### adjust 
-targets: 
+#### adjust
+
+# === ES Connections（擴充欄位，config_source=yml 時同步至 DB）===
+# 若未設定，系統使用 setting.yml 中的 es 區段作為預設連線
+# es_connections:
+#   - name: "default"
+#     host: "10.99.1.213"
+#     port: 9200
+#     username: "elastic"
+#     password: "a12345678"
+#     enable_auth: true
+#     use_tls: true
+#     is_default: true
+#     description: "預設 ES 叢集"
+
+# === Targets ===
+targets:
   - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
     subject: "log-detect test01"
-    indices:  
+    enable: true
+    indices:
     - index: logstash-log_detect*
       logname: waf
+      device_group: ""
       period: minutes
       unit: 60
       field: host.keyword
+      es_connection: ""
     - index: logstash-log_detect-*
       logname: waf1
+      device_group: ""
       period: minutes
       unit: 60
       field: host.keyword
+      es_connection: ""
   - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
     subject: "log-detect test02"
-    indices:  
+    enable: true
+    indices:
     - index: logstash-log_detect*
       logname: forti
+      device_group: ""
       period: minutes
       unit: 60
       field: host.keyword
+      es_connection: ""
   - receiver: ["russell.chen@bimap.co","rabot6201@gmail.com"]
     subject: "log-detect test03"
-    indices:  
+    enable: true
+    indices:
     - index: logstash-log_detect*
       logname: asa
+      device_group: ""
       period: minutes
       unit: 60
       field: host.keyword
+      es_connection: ""
+
+# === Devices 裝置清單已獨立至 devices.yml ===

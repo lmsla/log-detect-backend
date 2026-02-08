@@ -8,7 +8,7 @@ type Target struct {
 	models.Common
 	ID      int    `gorm:"primaryKey;index" json:"id" form:"id"`
 	Subject string `gorm:"type:varchar(50)" json:"subject" form:"subject"`
-	To      to     `gorm:"serializer:json"  json:"to" form:"to"`
+	To      To     `gorm:"serializer:json"  json:"to" form:"to"`
 	Enable  bool   `json:"enable"`
 	// Indices []Index `gorm:"foreignKey:TargetID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT;"`
 	Indices []Index `gorm:"many2many:indices_targets;foreignKey:ID;reference:ID;" json:"indices"`
@@ -27,7 +27,7 @@ type IndicesTargets struct {
 }
 
 type Name []string
-type to []string
+type To []string
 
 type Index struct {
 	models.Common
@@ -58,6 +58,7 @@ type Device struct {
 	models.Common
 	ID          int    `gorm:"primaryKey;index" json:"id" form:"id"`
 	DeviceGroup string `gorm:"type:varchar(50)" json:"device_group" form:"device_group"`
+	HAGroup     string `gorm:"type:varchar(50);default:''" json:"ha_group" form:"ha_group"`
 	Name        string `gorm:"type:varchar(50)" json:"name" form:"name"`
 }
 

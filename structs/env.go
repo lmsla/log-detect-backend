@@ -1,17 +1,19 @@
 package structs
 
 type EnviromentModel struct {
-	Database    database
-	Timescale   timescale    // 新增 TimescaleDB 配置
-	BatchWriter batchWriter  // 新增批量寫入配置
-	Server      server
-	ES          es
-	LIST        list
-	Email       email
-	INFORMATION information
-	Path        path
-	Cors        corsModel
-	SSO         sso
+	Database     database
+	Timescale    timescale    // TimescaleDB 配置
+	BatchWriter  batchWriter  // 批量寫入配置
+	Server       server
+	ES           es
+	LIST         list
+	Email        email
+	INFORMATION  information
+	Path         path
+	Cors         corsModel
+	SSO          sso
+	Features     FeaturesConfig // 功能模組開關
+	ConfigSource string         // 配置來源："yml" 或 "api"
 }
 
 type sso struct {

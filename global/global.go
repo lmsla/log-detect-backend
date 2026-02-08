@@ -12,6 +12,7 @@ var (
 	EnvConfig     *structs.EnviromentModel
 	Elasticsearch *elasticsearch.Client
 	TargetStruct  *structs.TargetStruct
+	YMLConfig     *structs.YMLConfig // 擴充格式的 config.yml（用於 YML-to-DB 同步）
 	Mysql         *gorm.DB
 	Crontab       *cron.Cron
 

@@ -21,9 +21,13 @@ func RunMigrations() error {
 		return fmt.Errorf("MySQL migration failed: %w", err)
 	}
 
-	// 執行 TimescaleDB migrations
-	if err := runTimescaleDBMigrations(); err != nil {
-		return fmt.Errorf("TimescaleDB migration failed: %w", err)
+	// 執行 TimescaleDB migrations（僅在功能啟用時）
+	if global.EnvConfig.Features.TimescaleDB {
+		if err := runTimescaleDBMigrations(); err != nil {
+			return fmt.Errorf("TimescaleDB migration failed: %w", err)
+		}
+	} else {
+		log.Println("TimescaleDB feature disabled, skipping TimescaleDB migrations")
 	}
 
 	log.Println("Database migrations completed successfully")
