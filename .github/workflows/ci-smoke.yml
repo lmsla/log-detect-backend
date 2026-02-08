@@ -35,3 +35,10 @@ jobs:
       - name: Docker build
         run: docker build -t log-detect-backend:ci .
 
+      - name: Docker build (tag for local registry)
+        run: |
+          docker build -t registry.lab.local/log-detect-backend:ci .
+
+      - name: Docker push (to local registry)
+        run: |
+          docker push registry.lab.local/log-detect-backend:ci
