@@ -17,7 +17,7 @@ timescale:
   host: "10.99.1.213"
   port: "5432"
   user: "user"
-  password: "password"
+  password: "password123"
   name: "monitoring"
   max_idle: 10
   max_life_time: "1h"
