@@ -2,3 +2,4 @@
 .DS_Store
 ./log_record
 ./log_record/*.log
+setting.yml

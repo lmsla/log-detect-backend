@@ -1,0 +1,68 @@
+database:
+
+  client: "mysql"
+  max_idle: 10
+  max_life_time: "1h"
+  max_open_conn: 100
+  user: "user"
+  password: "password"
+  host: "10.99.1.213"
+  name: "logdetect"
+  port: "3306"
+  params: "charset=utf8mb4&parseTime=True&loc=Asia%2fTaipei"
+  log_enable: 0
+  migration: "true"
+
+timescale:
+  host: "10.99.1.213"
+  port: "5432"
+  user: "user"
+  password: "password"
+  name: "monitoring"
+  max_idle: 10
+  max_life_time: "1h"
+  max_open_conn: 100
+  sslmode: "disable"
+
+batch_writer:
+  enabled: true
+  batch_size: 50
+  flush_interval: "5s"
+
+cors:
+  allow:
+    headers: "Content-type Access-Control-Allow-Origin Authorization Refresh-token"
+  default_allow_url: "http://localhost:8006"
+
+server: 
+  mode: debug
+  port: :8006
+
+path:
+  log_record: "/Users/chen/Downloads/01BiMap/03MyDevs/log-detect/log-detect-backend/log_record"
+
+
+# === email Settings ===
+# 用來告警發信的 email 設定 
+email:
+  user: "smtp_user@gmail.com"
+  password: "sdafdsa"
+  sender: "smtp_sender@gmail.com"
+  host: "smtp.gmail.com"
+  port: "587"
+  smtp: ["smtp.gmail.com:587"]
+  auth_type: "LoginAuth"
+  disable_tls: "false"
+  auth: true
+
+# === Feature Toggles ===
+# 功能模組開關，設為 false 可停用對應模組
+features:
+  timescaledb: true       # TimescaleDB + BatchWriter
+  es_monitoring: true     # ES 叢集健康監控排程
+  dashboard: true         # 儀表板 API
+  auth: true              # JWT / RBAC 認證
+  history: true           # 偵測結果寫入 MySQL history 表
+
+# 配置來源："yml" = 啟動時從 config.yml 同步至 DB | "api" = 前端 API 管理
+config_source: "api"
