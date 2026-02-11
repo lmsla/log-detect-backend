@@ -3,3 +3,5 @@
 ./log_record
 ./log_record/*.log
 setting.yml
+log_record
+log_record/*.log
