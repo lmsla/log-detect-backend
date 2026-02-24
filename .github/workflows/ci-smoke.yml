@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - develop
+    tags:
+      - "v*"
   workflow_dispatch: {}
 
 # Required Secrets (set in log-detect-backend repo):
@@ -39,23 +41,45 @@ jobs:
       - name: Go build
         run: go build ./...
 
-      # Tag images with the commit SHA for traceability
-      - name: Compute image tag
+      # Compute tags: always push sha-xxxxxxx; additionally on release tags (vX.Y.Z) push version tag
+      - name: Compute tags
         id: meta
+        shell: bash
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          echo "tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            echo "version_tag=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Docker build
+        shell: bash
         run: |
-          docker build -t "${IMAGE_REPO}:${{ steps.meta.outputs.tag }}" .
+          set -euo pipefail
+          docker build -t "${IMAGE_REPO}:${{ steps.meta.outputs.sha_tag }}" .
+
+          if [ "${{ steps.meta.outputs.is_release }}" = "true" ]; then
+            docker tag "${IMAGE_REPO}:${{ steps.meta.outputs.sha_tag }}" "${IMAGE_REPO}:${{ steps.meta.outputs.version_tag }}"
+          fi
 
       - name: Docker push (to local registry)
+        shell: bash
         run: |
-          docker push "${IMAGE_REPO}:${{ steps.meta.outputs.tag }}"
+          set -euo pipefail
+          docker push "${IMAGE_REPO}:${{ steps.meta.outputs.sha_tag }}"
+
+          if [ "${{ steps.meta.outputs.is_release }}" = "true" ]; then
+            docker push "${IMAGE_REPO}:${{ steps.meta.outputs.version_tag }}"
+          fi
 
       # === CD (MVP): update GitOps repo to point to the new image tag ===
       - name: Checkout GitOps repo
+        if: steps.meta.outputs.is_release == 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.GITOPS_REPO }}
@@ -64,12 +88,13 @@ jobs:
           token: ${{ secrets.GITOPS_PAT }}
 
       - name: Update image tag in GitOps deploy.yaml
+        if: steps.meta.outputs.is_release == 'true'
         working-directory: gitops
         run: |
           set -euo pipefail
 
           FILE="${GITOPS_DEPLOY_PATH}"
-          IMG="${IMAGE_REPO}:${{ steps.meta.outputs.tag }}"
+          IMG="${IMAGE_REPO}:${{ steps.meta.outputs.version_tag }}"
 
           if [ ! -f "$FILE" ]; then
             echo "ERROR: GitOps deploy file not found: $FILE" >&2
@@ -86,6 +111,7 @@ jobs:
           grep -n "image: ${IMAGE_REPO}" "$FILE" || true
 
       - name: Commit & push GitOps change
+        if: steps.meta.outputs.is_release == 'true'
         working-directory: gitops
         run: |
           set -euo pipefail
@@ -101,5 +127,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "cd: update log-detect-backend image to ${{ steps.meta.outputs.tag }}"
+          git commit -m "release: pin log-detect-backend image to ${{ steps.meta.outputs.version_tag }}"
           git push origin "${GITOPS_BRANCH}"
