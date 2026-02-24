@@ -6,25 +6,32 @@ on:
       - develop
   workflow_dispatch: {}
 
+# Required Secrets (set in log-detect-backend repo):
+# - GITOPS_PAT: a GitHub PAT that has write access to the private GitOps repo
+# Optional Variables (can be hardcoded below if you prefer):
+# - GITOPS_REPO: lmsla/mahakala-gitops
+# - GITOPS_BRANCH: main
+
 jobs:
   smoke:
     runs-on: self-hosted
+
+    env:
+      IMAGE_REPO: registry.lab.local/log-detect-backend
+      # Keep these aligned with your GitOps repo structure
+      GITOPS_REPO: lmsla/mahakala-gitops
+      GITOPS_BRANCH: main
+      GITOPS_DEPLOY_PATH: environments/lab/apps/log-detect-backend/base/deploy.yaml
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # 方案B（推薦）：用官方 action 安裝/掛載 Go，避免依賴 runner 系統 PATH
       - name: Setup Go from go.mod
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
-
-      - name: Show Go version
-        run: |
-          which go
-          go version
 
       - name: Go test
         run: go test ./...
@@ -32,11 +39,67 @@ jobs:
       - name: Go build
         run: go build ./...
 
-      - name: Docker build
-        run: docker build -t log-detect-backend:ci .
+      # Tag images with the commit SHA for traceability
+      - name: Compute image tag
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: Docker build (tag for local registry)
-        run: docker build -t registry.lab.local/log-detect-backend:ci .
+      - name: Docker build
+        run: |
+          docker build -t "${IMAGE_REPO}:${{ steps.meta.outputs.tag }}" .
 
       - name: Docker push (to local registry)
-        run: docker push registry.lab.local/log-detect-backend:ci
+        run: |
+          docker push "${IMAGE_REPO}:${{ steps.meta.outputs.tag }}"
+
+      # === CD (MVP): update GitOps repo to point to the new image tag ===
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          ref: ${{ env.GITOPS_BRANCH }}
+          path: gitops
+          token: ${{ secrets.GITOPS_PAT }}
+
+      - name: Update image tag in GitOps deploy.yaml
+        working-directory: gitops
+        run: |
+          set -euo pipefail
+
+          FILE="${GITOPS_DEPLOY_PATH}"
+          IMG="${IMAGE_REPO}:${{ steps.meta.outputs.tag }}"
+
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: GitOps deploy file not found: $FILE" >&2
+            ls -la "$(dirname "$FILE")" || true
+            exit 1
+          fi
+
+          # Replace the first matching image line for this repo
+          # Example before: image: registry.lab.local/log-detect-backend:ci
+          # Example after : image: registry.lab.local/log-detect-backend:sha-abcdef0
+          sed -i.bak -E "s#^(\s*image:\s*)${IMAGE_REPO}:[^\s]+#\1${IMG}#" "$FILE"
+
+          echo "--- updated file ---"
+          grep -n "image: ${IMAGE_REPO}" "$FILE" || true
+
+      - name: Commit & push GitOps change
+        working-directory: gitops
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+          git add "${GITOPS_DEPLOY_PATH}"
+
+          # No-op if nothing changed
+          if git diff --cached --quiet; then
+            echo "No GitOps changes to commit."
+            exit 0
+          fi
+
+          git commit -m "cd: update log-detect-backend image to ${{ steps.meta.outputs.tag }}"
+          git push origin "${GITOPS_BRANCH}"
