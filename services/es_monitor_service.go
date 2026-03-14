@@ -104,7 +104,8 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 	}
 
 	// 更新監控配置（使用 Select("*") 確保 bool 欄位的 false 值也能被正確更新）
-	if err := global.Mysql.Model(&existingMonitor).Select("*").Updates(&monitor).Error; err != nil {
+	// Omit("AlertThreshold") 排除向後相容用的 JSON 欄位，避免空字串寫入 MySQL JSON 欄位導致 Error 3140
+	if err := global.Mysql.Model(&existingMonitor).Select("*").Omit("AlertThreshold").Updates(&monitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     fmt.Sprintf("更新監控配置失敗: %s", err.Error()),
