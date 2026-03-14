@@ -103,8 +103,8 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 		}
 	}
 
-	// 更新監控配置
-	if err := global.Mysql.Model(&existingMonitor).Updates(&monitor).Error; err != nil {
+	// 更新監控配置（使用 Select("*") 確保 bool 欄位的 false 值也能被正確更新）
+	if err := global.Mysql.Model(&existingMonitor).Select("*").Updates(&monitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     fmt.Sprintf("更新監控配置失敗: %s", err.Error()),

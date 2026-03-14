@@ -163,8 +163,8 @@ func UpdateESConnection(connection entities.ESConnection) models.Response {
 		}
 	}
 
-	// 更新連線
-	err := global.Mysql.Model(&entities.ESConnection{}).Where("id = ?", connection.ID).Updates(&connection).Error
+	// 更新連線（使用 Select("*") 確保 bool 欄位的 false 值也能被正確更新）
+	err := global.Mysql.Model(&entities.ESConnection{}).Where("id = ?", connection.ID).Select("*").Updates(&connection).Error
 	if err != nil {
 		res.Msg = fmt.Sprintf("Failed to update ES connection: %s", err.Error())
 		log.Logrecord_no_rotate("ERROR", res.Msg)
