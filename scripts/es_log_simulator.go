@@ -93,22 +93,14 @@ func writeLog(client *elasticsearch.Client, index, fieldName, deviceName string,
 		"level":      "INFO",
 	}
 
-	// 支援巢狀欄位（如 host.keyword 對應的 host.name）
-	// log-detect 查詢用 host.keyword，實際欄位是 host（object）
-	if fieldName == "host.keyword" {
-		doc["host"] = map[string]interface{}{
-			"name":     deviceName,
-			"keyword":  deviceName,
-		}
-	} else {
-		// 純字串欄位（如 device_name.keyword）
-		// 去掉 .keyword 後綴取得實際欄位名
-		rawField := fieldName
-		if len(rawField) > 8 && rawField[len(rawField)-8:] == ".keyword" {
-			rawField = rawField[:len(rawField)-8]
-		}
-		doc[rawField] = deviceName
+	// 去掉 .keyword 後綴取得實際欄位名
+	// ES dynamic mapping 會自動為 text 欄位建立 .keyword sub-field（keyword 型別）
+	// 例如：寫入 host="fw-01" → ES 自動建立 host.keyword 供 terms 聚合使用
+	rawField := fieldName
+	if len(rawField) > 8 && rawField[len(rawField)-8:] == ".keyword" {
+		rawField = rawField[:len(rawField)-8]
 	}
+	doc[rawField] = deviceName
 
 	data, err := json.Marshal(doc)
 	if err != nil {
