@@ -57,24 +57,35 @@ func GetLognameData_TS() models.Response {
 	res := models.Response{}
 	res.Success = false
 
-	// 查詢所有不同的 logname
-	query := `SELECT DISTINCT logname FROM device_metrics ORDER BY logname`
-
-	rows, err := global.TimescaleDB.Query(query)
-	if err != nil {
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("failed to fetch lognames error: %s", err.Error()))
+	// 以 indices 設定為主，避免已刪除/失效的 logname 仍出現在歷史頁選單中
+	var indices []entities.Index
+	if err := global.Mysql.Order("logname").Find(&indices).Error; err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("failed to fetch indices lognames error: %s", err.Error()))
 		res.Msg = "Query failed"
 		return res
 	}
-	defer rows.Close()
 
-	var lognames []string
-	for rows.Next() {
-		var logname string
-		if err := rows.Scan(&logname); err != nil {
+	existsQuery := `SELECT EXISTS(SELECT 1 FROM device_metrics WHERE logname = $1 LIMIT 1)`
+	lognames := make([]string, 0, len(indices))
+	seen := make(map[string]struct{})
+	for _, idx := range indices {
+		name := idx.Logname
+		if name == "" {
 			continue
 		}
-		lognames = append(lognames, logname)
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		var exists bool
+		if err := global.TimescaleDB.QueryRow(existsQuery, name).Scan(&exists); err != nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("failed to check device_metrics logname existence: %s", err.Error()))
+			continue
+		}
+		if !exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		lognames = append(lognames, name)
 	}
 
 	// 檢查每個 logname 的狀態

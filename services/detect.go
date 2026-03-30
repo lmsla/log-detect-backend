@@ -64,20 +64,35 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	var new_list []entities.Device
 
 	// 資產管理清單未建立，自動把從 ES 撈出的設備加入群組中
+	// 同樣跳過已存在於其他 group 的設備，避免跨群組污染
 	if len(deviceslist) == 0 {
-		// fmt.Println("no data")
-		device_list = result_list
-
 		for _, device := range result_list {
+			var existCount int64
+			if err := global.Mysql.Model(&entities.Device{}).
+				Where("name = ?", device).
+				Count(&existCount).Error; err != nil {
+				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check device existence failed for '%s': %s", device, err.Error()))
+				continue
+			}
+			if existCount > 0 {
+				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
+					"Auto-discovery skipped: device '%s' already exists in another group (current group: %s)",
+					device, device_group))
+				continue
+			}
 			newDevice := entities.Device{
 				Common:      models.Common{},
 				DeviceGroup: device_group,
 				Name:        device,
+				HAGroup:     lookupHAGroupFromYML(device_group, device),
 			}
 			origin_list = append(origin_list, newDevice)
+			device_list = append(device_list, device)
 		}
 
-		CreateDevice(origin_list)
+		if len(origin_list) > 0 {
+			CreateDevice(origin_list)
+		}
 
 	} else {
 		// db 中的 device list
@@ -91,40 +106,69 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	fmt.Println("新增的設備:", added)
 
 	// 將偵測到的新設備寫入 devices table 中
+	// 注意：若設備已存在於其他 device_group，則跳過自動發現
+	// 原因：不同 logname 可能查詢同一個 ES index（例如測試環境），
+	//       若不過濾，同一設備會被誤寫入多個 group，導致跨群組告警污染
 	if len(added) != 0 {
 		for _, device := range added {
+			var existCount int64
+			if err := global.Mysql.Model(&entities.Device{}).
+				Where("name = ?", device).
+				Count(&existCount).Error; err != nil {
+				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check device existence failed for '%s': %s", device, err.Error()))
+				continue
+			}
+			if existCount > 0 {
+				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
+					"Auto-discovery skipped: device '%s' already exists in another group (current group: %s)",
+					device, device_group))
+				continue
+			}
 			newDevice := entities.Device{
 				Common:      models.Common{},
 				DeviceGroup: device_group,
 				Name:        device,
+				HAGroup:     lookupHAGroupFromYML(device_group, device),
 			}
 			new_list = append(new_list, newDevice)
 		}
-		CreateDevice(new_list)
+		if len(new_list) > 0 {
+			CreateDevice(new_list)
+		}
 	}
 
-	// 1. 找出要刪除的重複資料的 id
-	rows, err := global.Mysql.Raw("SELECT MIN(id) as id FROM devices GROUP BY name, device_group HAVING COUNT(*) > 1").Rows()
+	// 清除重複裝置：保留每組 (name, device_group) 中 id 最小的那筆（最早建立），刪除其餘重複
+	var dupIDs []int
+	dupRows, err := global.Mysql.Raw(`
+		SELECT d.id
+		FROM devices d
+		INNER JOIN (
+			SELECT name, device_group, MIN(id) AS keep_id
+			FROM devices
+			GROUP BY name, device_group
+			HAVING COUNT(*) > 1
+		) AS dup ON d.name = dup.name AND d.device_group = dup.device_group
+		WHERE d.id != dup.keep_id
+	`).Rows()
 	if err != nil {
-		// 處理錯誤
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error querying duplicate devices: %s", err.Error()))
 		return
 	}
-	defer rows.Close()
-
-	var ids []int
-	for rows.Next() {
+	defer dupRows.Close()
+	for dupRows.Next() {
 		var id int
-		rows.Scan(&id)
-		ids = append(ids, id)
+		if err := dupRows.Scan(&id); err != nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error scanning duplicate device id: %s", err.Error()))
+			return
+		}
+		dupIDs = append(dupIDs, id)
 	}
 
-	// 2. 刪除重複資料
-	result_to := global.Mysql.Where("id IN (?)", ids).Delete(&entities.Device{})
-	if result_to.Error != nil {
-		// 處理錯誤
-		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error deleting duplicate devices: %s", result_to.Error.Error()))
-		return
+	if len(dupIDs) > 0 {
+		if err := global.Mysql.Where("id IN ?", dupIDs).Delete(&entities.Device{}).Error; err != nil {
+			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error deleting duplicate devices: %s", err.Error()))
+			return
+		}
 	}
 
 	// === HA Group 過濾 ===
@@ -168,7 +212,7 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		}
 
 		// === Feature Toggle: History ===
-		if global.EnvConfig.Features.History {
+		if global.EnvConfig.Features.TimescaleDB {
 			if global.BatchWriter != nil {
 				if err := global.BatchWriter.AddHistory(historyData); err != nil {
 					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch: %s", err.Error()))
@@ -200,7 +244,7 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		}
 
 		// === Feature Toggle: History ===
-		if global.EnvConfig.Features.History {
+		if global.EnvConfig.Features.TimescaleDB {
 			if global.BatchWriter != nil {
 				if err := global.BatchWriter.AddHistory(historyData); err != nil {
 					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for device %s: %s", device, err.Error()))
@@ -231,7 +275,7 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 		}
 
 		// === Feature Toggle: History ===
-		if global.EnvConfig.Features.History {
+		if global.EnvConfig.Features.TimescaleDB {
 			if global.BatchWriter != nil {
 				if err := global.BatchWriter.AddHistory(historyData); err != nil {
 					log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to add history to batch for standby device %s: %s", device, err.Error()))
@@ -289,6 +333,26 @@ func filterHAGroups(deviceGroup string, removed []string, online []string) (trul
 	}
 
 	return trulyRemoved, standbyDevices
+}
+
+// lookupHAGroupFromYML 從已載入的 YMLConfig 查詢裝置的 ha_group 設定
+// 用於自動發現裝置時，讓新建的 Device 記錄帶上正確的 ha_group，而非永遠空白
+// 若 YMLConfig 未載入或找不到對應裝置，回傳空字串（獨立裝置行為）
+func lookupHAGroupFromYML(deviceGroup, deviceName string) string {
+	if global.YMLConfig == nil {
+		return ""
+	}
+	for _, group := range global.YMLConfig.Devices {
+		if group.DeviceGroup != deviceGroup {
+			continue
+		}
+		for _, item := range group.Names {
+			if item.Name == deviceName {
+				return item.HAGroup
+			}
+		}
+	}
+	return ""
 }
 
 // getHAGroupInfo 取得失聯裝置的 HA 群組資訊（用於郵件顯示）

@@ -36,18 +36,29 @@
 ```yaml
 # 功能模組開關
 features:
-  timescaledb: false       # 停用 TimescaleDB 連線、BatchWriter、時序資料
-  es_monitoring: false     # 停用 ES 叢集健康監控排程
-  dashboard: false         # 停用儀表板相關 API
-  auth: false              # 停用 JWT/RBAC 認證授權
-  history: true            # 偵測結果是否寫入 MySQL history 表
+  timescaledb: false       # TimescaleDB 連線 + BatchWriter + 偵測結果歷史寫入
+  es_monitoring: false     # ES 叢集健康監控排程（獨立，不依賴 TimescaleDB）
+  dashboard: true          # 儀表板 API
+  auth: true               # JWT/RBAC 認證授權
 
 # 配置來源
 config_source: "yml"       # "yml" = 啟動時從 config.yml 同步到 DB
                            # "api" = 由前端/API 管理（預設行為）
 ```
 
-**注意**：`features` 區段若未定義，所有開關預設為 `false`。現有部署環境升級時需加入此區段並設定為 `true`。
+**注意**：`features` 區段若未定義，所有開關預設為 `false`（Go 零值）。現有部署環境升級時需加入此區段並設定為 `true`。
+
+#### Feature Toggle 依賴關係
+
+| 開關 | 控制範圍 | 依賴 |
+|------|---------|------|
+| `timescaledb` | TimescaleDB 連線、BatchWriter 初始化、偵測結果 history 寫入 | 無 |
+| `es_monitoring` | ES 叢集健康監控排程器（`InitESScheduler`）| 無（獨立） |
+| `dashboard` | 儀表板相關 API 路由 | 建議同時開啟 `timescaledb` |
+| `auth` | JWT 驗證中介層、RBAC 初始化 | 無 |
+
+> ⚠️ `timescaledb: false` 時 BatchWriter 不會初始化，偵測結果的歷史資料也不會寫入 TimescaleDB。
+> `dashboard` 依賴 TimescaleDB 中的歷史資料，若 `timescaledb: false` 儀表板將回傳空資料。
 
 ### config.yml 擴充格式
 
@@ -75,38 +86,33 @@ targets:
     enable: true
     indices:
       - index: "logstash-waf-*"    # ES 索引模式
-        logname: "waf"             # 日誌名稱
-        device_group: "waf-group"  # 裝置群組
+        logname: "waf"             # 日誌名稱（唯一識別鍵）
+        device_group: "waf-group"  # 裝置群組（對應 devices 區段）
         period: "minutes"          # 監控週期：minutes 或 hours
         unit: 5                    # 週期數值
         field: "host.keyword"      # 聚合欄位
         es_connection: "default"   # 引用 es_connections 的 name
 
-  - subject: "Firewall Monitor"
-    receiver:
-      - ops@example.com
-    enable: true
-    indices:
-      - index: "logstash-fw-*"
-        logname: "firewall"
-        device_group: "fw-group"
-        period: "hours"
-        unit: 1
-        field: "host.keyword"
-        es_connection: "default"
-
 # 裝置清單（選填，未定義時由偵測自動發現）
+# 注意：devices 格式已升級為物件陣列，支援 ha_group 欄位
 devices:
   - device_group: "waf-group"
     names:
-      - "waf-01"
-      - "waf-02"
-      - "waf-03"
+      - name: "waf-01"
+        ha_group: ""               # 空字串 = 獨立裝置
+      - name: "waf-02"
+        ha_group: ""
   - device_group: "fw-group"
     names:
-      - "fw-01"
-      - "fw-02"
+      - name: "fw-01-primary"
+        ha_group: "fw-cluster-01"  # 相同 ha_group = 同一 HA 叢集
+      - name: "fw-01-standby"
+        ha_group: "fw-cluster-01"
+      - name: "fw-02"
+        ha_group: ""
 ```
+
+> ⚠️ `devices` 區段各 group 的 `device_group` 必須與 `targets.indices.device_group` 對應，否則偵測比對會失效。
 
 **向後相容**：舊版 config.yml（僅含 targets 區段）仍可正常運作。新增的 `es_connections` 和 `devices` 區段為選填。
 
@@ -126,7 +132,7 @@ devices:
 3. **配置載入**: `utils/utils.go` — 解析 features 和擴充 config.yml
 4. **啟動流程**: `main.go` — Feature guards + sync 呼叫
 5. **資料庫遷移**: `services/migration.go` — TimescaleDB migration guard
-6. **偵測服務**: `services/detect.go` — History 寫入開關
+6. **偵測服務**: `services/detect.go` — History 寫入改用 `TimescaleDB` 開關
 7. **路由**: `router/router.go` — 條件註冊路由與中介層
 
 ---
@@ -144,7 +150,8 @@ type FeaturesConfig struct {
     ESMonitoring bool `mapstructure:"es_monitoring"`
     Dashboard    bool `mapstructure:"dashboard"`
     Auth         bool `mapstructure:"auth"`
-    History      bool `mapstructure:"history"`
+    // 注意：history 已移除，統一由 timescaledb 開關控制
+    // 開啟 timescaledb 即同時啟用 BatchWriter 與 history 寫入
 }
 
 // YMLConfig config.yml 擴充格式的根結構
@@ -186,94 +193,44 @@ type YMLIndex struct {
     ESConnection string `yaml:"es_connection" mapstructure:"es_connection"`
 }
 
-// YMLDeviceGroup 裝置群組配置
+// YMLDeviceGroup 裝置群組配置（支援 HA Group）
 type YMLDeviceGroup struct {
-    DeviceGroup string   `yaml:"device_group" mapstructure:"device_group"`
-    Names       []string `yaml:"names" mapstructure:"names"`
+    DeviceGroup string          `yaml:"device_group" mapstructure:"device_group"`
+    Names       []YMLDeviceItem `yaml:"names" mapstructure:"names"`
+}
+
+// YMLDeviceItem 單一裝置（含 HA 群組設定）
+type YMLDeviceItem struct {
+    Name    string `yaml:"name" mapstructure:"name"`
+    HAGroup string `yaml:"ha_group" mapstructure:"ha_group"`
 }
 ```
 
-### 2. EnviromentModel 擴充 (`structs/env.go`)
+> ⚠️ `YMLDeviceGroup.Names` 已從 `[]string` 改為 `[]YMLDeviceItem` 物件陣列，以支援 `ha_group` 欄位。
 
-```go
-type EnviromentModel struct {
-    // ... 現有欄位不變 ...
-    Features     FeaturesConfig `mapstructure:"features"`       // 新增
-    ConfigSource string         `mapstructure:"config_source"`  // 新增
-}
-```
-
-### 3. 全域變數 (`global/global.go`)
-
-```go
-var (
-    // ... 現有變數不變 ...
-    YMLConfig *structs.YMLConfig  // 新增：擴充格式的 config.yml
-)
-```
-
-### 4. 配置解析 (`utils/utils.go`)
-
-在 `viperSettingToModel()` 中新增：
-
-```go
-// Features
-config.Features.TimescaleDB = viper.GetBool("features.timescaledb")
-config.Features.ESMonitoring = viper.GetBool("features.es_monitoring")
-config.Features.Dashboard = viper.GetBool("features.dashboard")
-config.Features.Auth = viper.GetBool("features.auth")
-config.Features.History = viper.GetBool("features.history")
-config.ConfigSource = viper.GetString("config_source")
-```
-
-在 `loadConfigFile()` 中新增擴充格式解析：
-
-```go
-// 新增：解析擴充格式到 YMLConfig
-var ymlConfig structs.YMLConfig
-if err := viper.Unmarshal(&ymlConfig); err != nil {
-    fmt.Printf("Warning: could not unmarshal expanded config.yml: %v\n", err)
-}
-global.YMLConfig = &ymlConfig
-```
-
-### 5. 啟動流程 (`main.go`)
+### 2. 啟動流程 (`main.go`)
 
 ```go
 func main() {
     utils.LoadEnvironment()
 
     clients.LoadDatabase()
-    mysql, _ := global.Mysql.DB()
-    defer mysql.Close()
 
     // === Feature Toggle: TimescaleDB ===
+    // 控制 TimescaleDB 連線、BatchWriter、偵測結果 history 寫入
     if global.EnvConfig.Features.TimescaleDB {
-        if err := clients.LoadTimescaleDB(); err != nil {
-            log.Fatalf("Failed to initialize TimescaleDB: %v", err)
-        }
-        defer global.TimescaleDB.Close()
-
-        if global.EnvConfig.BatchWriter.Enabled {
-            // ... 現有 BatchWriter 初始化 ...
-        }
-    } else {
-        fmt.Println("TimescaleDB feature disabled, skipping initialization")
+        clients.LoadTimescaleDB()
+        // BatchWriter 初始化
     }
 
-    // Migrations
+    // Migrations（TimescaleDB 遷移由 timescaledb 開關守衛）
     services.RunMigrations()
 
     // === YML-to-DB Sync ===
     if global.EnvConfig.ConfigSource == "yml" {
-        fmt.Println("Config source is YML, syncing config.yml to database...")
-        if err := services.SyncConfigToDB(); err != nil {
-            log.Fatalf("Failed to sync config to DB: %v", err)
-        }
-        fmt.Println("Config sync completed")
+        services.SyncConfigToDB()
     }
 
-    // ES Client（偵測必需）
     clients.SetElkClient()
 
     // === Feature Toggle: Auth ===
@@ -281,8 +238,6 @@ func main() {
         authService := services.NewAuthService()
         authService.CreateDefaultRolesAndPermissions()
         authService.CreateDefaultAdmin()
-    } else {
-        fmt.Println("Auth feature disabled, skipping RBAC initialization")
     }
 
     services.LoadCrontab()
@@ -291,427 +246,103 @@ func main() {
     if global.EnvConfig.Features.ESMonitoring {
         services.InitESScheduler()
         services.GlobalESScheduler.LoadAllMonitors()
-    } else {
-        fmt.Println("ES Monitoring feature disabled, skipping scheduler")
     }
 
-    // 核心偵測（永遠執行）
     services.Control_center()
-
     r := router.LoadRouter()
     r.Run(global.EnvConfig.Server.Port)
 }
 ```
 
-### 6. 同步機制 (`services/config_sync.go`)
+### 3. 同步機制 (`services/config_sync.go`)
 
-#### 同步演算法
+#### 同步執行順序與設計原則
 
 ```
 SyncConfigToDB()
-├── 1. 驗證 YMLConfig 是否有效
-├── 2. 開始 GORM 交易
-├── 3. syncESConnections()
-│   ├── 載入 DB 現有 ESConnection
-│   ├── 以 name 為識別鍵，新增/更新
-│   ├── YML 中不存在的 → soft delete
-│   └── 回傳 connMap[name] → ID
-├── 4. syncTargets()
-│   ├── 載入 DB 現有 Target (Preload Indices)
-│   ├── 以 subject 為識別鍵，新增/更新
-│   ├── 同步每個 Target 的 Indices
-│   │   ├── 以 logname 為識別鍵
-│   │   ├── 透過 connMap 解析 es_connection name → ID
-│   │   └── YML 中不存在的 index → 刪除
-│   └── YML 中不存在的 target → 刪除（含關聯）
-├── 5. syncDevices()
-│   ├── 以 device_group + name 為識別鍵
-│   ├── 新增不存在的裝置
-│   └── 刪除 YML 中未定義的裝置
-└── 6. Commit 或 Rollback
+├── Step 1: syncESConnectionsUpsert()    — 先建 ES 連線，供後續 Index 參照
+├── Step 2: syncDeviceGroups()           — 先建群組，devices 才能正確關聯
+├── Step 3: syncTargets()                — Targets + Indices upsert + 刪除
+├── Step 4: syncDevices()                — Devices upsert + 刪除（僅處理 YML 有定義的群組）
+└── Step 5: syncESConnectionsDelete()    — 必須在 Indices 清理後才執行，避免 FK 牽連
 ```
 
-#### 核心程式碼
+> **為什麼 ES 刪除要拆到最後？**
+> Index entity 有 `es_connection_id` FK，若先刪除 ES 連線，會造成孤立 FK。
+> 先完成 syncTargets（含 Indices 清理）再執行 ES 刪除，確保無殘留引用。
+
+#### 識別鍵策略
+
+| 資料表 | 識別鍵 | 說明 |
+|--------|--------|------|
+| es_connections | `name` | 唯一名稱 |
+| device_groups | `name` | 唯一名稱 |
+| targets | `subject` | 郵件主旨即識別鍵 |
+| indices | `logname`（同 target 內） | 同一 target 下日誌名稱不重複 |
+| devices | `device_group` + `name` | 複合識別鍵 |
+
+#### 同步策略：全量覆蓋
+
+YML 代表完整的期望狀態：
+
+- YML 有、DB 無 → **新增**
+- YML 有、DB 有 → **更新**
+- YML 無、DB 有 → **刪除**（ES 連線為軟刪除，devices/targets 為硬刪除）
+
+整個同步包在一個 GORM 交易中，任何步驟失敗則全部 Rollback。
+
+> ⚠️ `device_groups` 只做 upsert，**不刪除**。原因：YML 移除的群組可能仍有手動建立的裝置，誤刪會造成資料損失。群組刪除需透過 API 手動確認。
+
+#### `syncDeviceGroups` 特別說明
+
+YML 中 `devices` 區段每個 `device_group` 名稱都會在 `device_groups` 表中自動建立對應記錄。
+這確保了 `devices` 表的資料在查詢群組清單時能正確顯示。
+
+#### `syncTargets` — To 欄位序列化注意事項
+
+`Target.To` 欄位有 `gorm:"serializer:json"` tag，更新時**必須使用 struct-based Updates + Select**，
+若使用 `map[string]interface{}` 方式，GORM 會繞過序列化器，導致 MySQL Error 3140（Invalid JSON）。
 
 ```go
-package services
+// ✅ 正確寫法
+tx.Model(existing).Select("To", "Enable").Updates(entities.Target{
+    To:     entities.To(ymlTarget.Receiver),
+    Enable: ymlTarget.Enable,
+})
 
-import (
-    "fmt"
-    "log-detect-backend/entities"
-    "log-detect-backend/global"
-    log "log-detect-backend/log_record"
-    "gorm.io/gorm"
-)
+// ❌ 錯誤寫法（繞過 serializer:json）
+tx.Model(existing).Updates(map[string]interface{}{
+    "to":     entities.To(ymlTarget.Receiver),
+    "enable": ymlTarget.Enable,
+})
+```
 
-// SyncConfigToDB 將 config.yml 的配置同步至 MySQL
-// 僅在 config_source = "yml" 時呼叫
-func SyncConfigToDB() error {
-    ymlConfig := global.YMLConfig
-    if ymlConfig == nil {
-        log.Logrecord_no_rotate("WARNING", "YMLConfig is nil, skipping sync")
-        return nil
+### 4. History 寫入開關 (`services/detect.go`)
+
+```go
+// timescaledb 開關同時控制 BatchWriter 初始化與 history 寫入
+if global.EnvConfig.Features.TimescaleDB {
+    if global.BatchWriter != nil {
+        global.BatchWriter.AddHistory(historyData)
     }
-
-    tx := global.Mysql.Begin()
-    if tx.Error != nil {
-        return fmt.Errorf("failed to begin transaction: %w", tx.Error)
-    }
-    defer func() {
-        if r := recover(); r != nil {
-            tx.Rollback()
-        }
-    }()
-
-    // Step 1: 同步 ES Connections
-    connMap, err := syncESConnections(tx, ymlConfig.ESConnections)
-    if err != nil {
-        tx.Rollback()
-        return fmt.Errorf("sync ES connections failed: %w", err)
-    }
-
-    // Step 2: 同步 Targets + Indices
-    if err := syncTargets(tx, ymlConfig.Targets, connMap); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("sync targets failed: %w", err)
-    }
-
-    // Step 3: 同步 Devices
-    if err := syncDevices(tx, ymlConfig.Devices); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("sync devices failed: %w", err)
-    }
-
-    if err := tx.Commit().Error; err != nil {
-        return fmt.Errorf("failed to commit sync transaction: %w", err)
-    }
-
-    log.Logrecord_no_rotate("INFO", "Config sync completed successfully")
-    return nil
-}
-
-// syncESConnections 同步 ES 連線配置，回傳 name → DB ID 的映射
-func syncESConnections(tx *gorm.DB, connections []structs.YMLESConnection) (map[string]int, error) {
-    connMap := make(map[string]int)
-
-    if len(connections) == 0 {
-        return connMap, nil
-    }
-
-    // 載入現有連線
-    var existing []entities.ESConnection
-    tx.Where("deleted_at IS NULL").Find(&existing)
-    existingByName := make(map[string]*entities.ESConnection)
-    for i := range existing {
-        existingByName[existing[i].Name] = &existing[i]
-    }
-
-    // 建立 YML name 集合
-    ymlNames := make(map[string]bool)
-
-    for _, conn := range connections {
-        ymlNames[conn.Name] = true
-        if dbConn, ok := existingByName[conn.Name]; ok {
-            // 更新
-            tx.Model(dbConn).Updates(map[string]interface{}{
-                "host":        conn.Host,
-                "port":        conn.Port,
-                "username":    conn.Username,
-                "password":    conn.Password,
-                "enable_auth": conn.EnableAuth,
-                "use_tls":     conn.UseTLS,
-                "is_default":  conn.IsDefault,
-                "description": conn.Description,
-            })
-            connMap[conn.Name] = dbConn.ID
-        } else {
-            // 新增
-            newConn := entities.ESConnection{
-                Name:        conn.Name,
-                Host:        conn.Host,
-                Port:        conn.Port,
-                Username:    conn.Username,
-                Password:    conn.Password,
-                EnableAuth:  conn.EnableAuth,
-                UseTLS:      conn.UseTLS,
-                IsDefault:   conn.IsDefault,
-                Description: conn.Description,
-            }
-            if err := tx.Create(&newConn).Error; err != nil {
-                return nil, fmt.Errorf("create ES connection '%s' failed: %w", conn.Name, err)
-            }
-            connMap[conn.Name] = newConn.ID
-        }
-    }
-
-    // 刪除 YML 中不存在的
-    for name, dbConn := range existingByName {
-        if !ymlNames[name] {
-            tx.Delete(dbConn)
-        }
-    }
-
-    return connMap, nil
-}
-
-// syncTargets 同步監控目標與索引
-func syncTargets(tx *gorm.DB, targets []structs.YMLTarget, connMap map[string]int) error {
-    // 載入現有 targets
-    var existing []entities.Target
-    tx.Preload("Indices").Find(&existing)
-    existingBySubject := make(map[string]*entities.Target)
-    for i := range existing {
-        existingBySubject[existing[i].Subject] = &existing[i]
-    }
-
-    ymlSubjects := make(map[string]bool)
-
-    for _, t := range targets {
-        ymlSubjects[t.Subject] = true
-
-        if dbTarget, ok := existingBySubject[t.Subject]; ok {
-            // 更新 target
-            tx.Model(dbTarget).Updates(map[string]interface{}{
-                "to":     entities.To(t.Receiver),
-                "enable": t.Enable,
-            })
-            // 同步 indices
-            if err := syncIndicesForTarget(tx, dbTarget, t.Indices, connMap); err != nil {
-                return err
-            }
-        } else {
-            // 新增 target
-            newTarget := entities.Target{
-                Subject: t.Subject,
-                To:      entities.To(t.Receiver),
-                Enable:  t.Enable,
-            }
-            if err := tx.Create(&newTarget).Error; err != nil {
-                return fmt.Errorf("create target '%s' failed: %w", t.Subject, err)
-            }
-            // 新增 indices
-            for _, idx := range t.Indices {
-                newIndex := buildIndexEntity(idx, connMap)
-                if err := tx.Create(&newIndex).Error; err != nil {
-                    return fmt.Errorf("create index '%s' failed: %w", idx.Logname, err)
-                }
-                // 建立關聯
-                tx.Exec("INSERT INTO indices_targets (target_id, index_id) VALUES (?, ?)",
-                    newTarget.ID, newIndex.ID)
-            }
-        }
-    }
-
-    // 刪除 YML 中不存在的 targets
-    for subject, dbTarget := range existingBySubject {
-        if !ymlSubjects[subject] {
-            // 清除關聯
-            tx.Exec("DELETE FROM indices_targets WHERE target_id = ?", dbTarget.ID)
-            tx.Exec("DELETE FROM cron_lists WHERE target_id = ?", dbTarget.ID)
-            // 刪除 indices
-            for _, idx := range dbTarget.Indices {
-                tx.Delete(&idx)
-            }
-            tx.Delete(dbTarget)
-        }
-    }
-
-    return nil
-}
-
-// syncIndicesForTarget 同步單一 Target 下的 Indices
-func syncIndicesForTarget(tx *gorm.DB, target *entities.Target, ymlIndices []structs.YMLIndex, connMap map[string]int) error {
-    existingByLogname := make(map[string]*entities.Index)
-    for i := range target.Indices {
-        existingByLogname[target.Indices[i].Logname] = &target.Indices[i]
-    }
-
-    ymlLognames := make(map[string]bool)
-
-    for _, idx := range ymlIndices {
-        ymlLognames[idx.Logname] = true
-        if dbIdx, ok := existingByLogname[idx.Logname]; ok {
-            // 更新
-            updates := buildIndexUpdates(idx, connMap)
-            tx.Model(dbIdx).Updates(updates)
-        } else {
-            // 新增
-            newIndex := buildIndexEntity(idx, connMap)
-            if err := tx.Create(&newIndex).Error; err != nil {
-                return fmt.Errorf("create index '%s' failed: %w", idx.Logname, err)
-            }
-            tx.Exec("INSERT INTO indices_targets (target_id, index_id) VALUES (?, ?)",
-                target.ID, newIndex.ID)
-        }
-    }
-
-    // 刪除不存在的
-    for logname, dbIdx := range existingByLogname {
-        if !ymlLognames[logname] {
-            tx.Exec("DELETE FROM indices_targets WHERE index_id = ?", dbIdx.ID)
-            tx.Delete(dbIdx)
-        }
-    }
-
-    return nil
-}
-
-// syncDevices 同步裝置清單
-func syncDevices(tx *gorm.DB, deviceGroups []structs.YMLDeviceGroup) error {
-    if len(deviceGroups) == 0 {
-        return nil // 不定義 devices 時跳過，由偵測自動發現
-    }
-
-    for _, group := range deviceGroups {
-        // 載入該群組現有裝置
-        var existing []entities.Device
-        tx.Where("device_group = ?", group.DeviceGroup).Find(&existing)
-        existingNames := make(map[string]bool)
-        for _, d := range existing {
-            existingNames[d.Name] = true
-        }
-
-        ymlNames := make(map[string]bool)
-        for _, name := range group.Names {
-            ymlNames[name] = true
-        }
-
-        // 新增不存在的
-        for _, name := range group.Names {
-            if !existingNames[name] {
-                tx.Create(&entities.Device{
-                    DeviceGroup: group.DeviceGroup,
-                    Name:        name,
-                })
-            }
-        }
-
-        // 刪除 YML 中沒有的
-        for _, d := range existing {
-            if !ymlNames[d.Name] {
-                tx.Delete(&d)
-            }
-        }
-    }
-
-    return nil
-}
-
-// 輔助函式
-func buildIndexEntity(idx structs.YMLIndex, connMap map[string]int) entities.Index {
-    index := entities.Index{
-        Pattern:     idx.Index,
-        Logname:     idx.Logname,
-        DeviceGroup: idx.DeviceGroup,
-        Period:      idx.Period,
-        Unit:        idx.Unit,
-        Field:       idx.Field,
-    }
-    if idx.ESConnection != "" {
-        if connID, ok := connMap[idx.ESConnection]; ok {
-            index.ESConnectionID = &connID
-        }
-    }
-    return index
-}
-
-func buildIndexUpdates(idx structs.YMLIndex, connMap map[string]int) map[string]interface{} {
-    updates := map[string]interface{}{
-        "pattern":      idx.Index,
-        "device_group": idx.DeviceGroup,
-        "period":       idx.Period,
-        "unit":         idx.Unit,
-        "field":        idx.Field,
-    }
-    if idx.ESConnection != "" {
-        if connID, ok := connMap[idx.ESConnection]; ok {
-            updates["es_connection_id"] = connID
-        }
-    }
-    return updates
 }
 ```
 
-### 7. History 開關 (`services/detect.go`)
+> history 開關已移除，不再有「history: true 但 timescaledb: false」造成開關看似開啟卻無效的混淆情況。
 
-在 `Detect()` 函式中，包裹 history 寫入邏輯：
+### 5. 自動發現跨群組防護 (`services/detect.go`)
 
-```go
-historyEnabled := global.EnvConfig.Features.History
-
-// 在線上裝置迴圈中
-if historyEnabled {
-    Insert_HistoryData(historyData)
-}
-if global.BatchWriter != nil {
-    global.BatchWriter.AddHistory(historyData)
-}
-
-// 離線裝置迴圈中同理
-if historyEnabled {
-    Insert_HistoryData(historyData)
-}
-if global.BatchWriter != nil {
-    global.BatchWriter.AddHistory(historyData)
-}
-```
-
-### 8. 路由條件註冊 (`router/router.go`)
+ES 查詢結果可能包含屬於其他 device_group 的裝置（尤其是測試環境多 target 共用同一 ES index 時）。
+系統在自動發現邏輯中加入了全表 name 查詢，**若裝置已存在於任何群組則跳過自動建立**，
+避免跨群組告警污染。
 
 ```go
-func LoadRouter() *gin.Engine {
-    features := global.EnvConfig.Features
-
-    // 動態選擇中介層
-    var authMW gin.HandlerFunc
-    if features.Auth {
-        authMW = middleware.AuthMiddleware()
-    } else {
-        authMW = func(c *gin.Context) { c.Next() }
-    }
-
-    // Auth 路由
-    if features.Auth {
-        auth := router.Group("/auth")
-        { /* 現有 auth 路由 */ }
-    }
-
-    // Dashboard 路由
-    if features.Dashboard {
-        dashboard := apiv1.Group("/dashboard")
-        dashboard.Use(authMW)
-        { /* 現有 dashboard 路由 */ }
-    }
-
-    // ES Monitoring 路由
-    if features.ESMonitoring {
-        esGroup := apiv1.Group("/elasticsearch")
-        esGroup.Use(authMW)
-        { /* 現有 ES monitoring 路由 */ }
-    }
-
-    // 核心路由（Target, Device, Index 等）永遠註冊
-    // ...
-}
-```
-
-### 9. TimescaleDB Migration Guard (`services/migration.go`)
-
-```go
-func RunMigrations() error {
-    if err := runMySQLMigrations(); err != nil {
-        return fmt.Errorf("MySQL migration failed: %w", err)
-    }
-
-    if global.EnvConfig.Features.TimescaleDB {
-        if err := runTimescaleDBMigrations(); err != nil {
-            return fmt.Errorf("TimescaleDB migration failed: %w", err)
-        }
-    } else {
-        fmt.Println("TimescaleDB feature disabled, skipping TimescaleDB migrations")
-    }
-
-    return nil
+// 自動發現前先確認設備不存在於任何群組
+var existCount int64
+global.Mysql.Model(&entities.Device{}).Where("name = ?", device).Count(&existCount)
+if existCount > 0 {
+    // 跳過，該裝置已屬於其他 device_group
+    continue
 }
 ```
 
@@ -736,44 +367,19 @@ func RunMigrations() error {
 
 ---
 
-## 識別鍵策略
-
-同步時以業務欄位判斷「同一筆資料」：
-
-| 資料表 | 識別鍵 | 說明 |
-|--------|--------|------|
-| es_connections | `name` | 已有 unique index |
-| targets | `subject` | 已有重複檢查邏輯 |
-| indices | `logname`（同 target 內） | 同一 target 下日誌名稱不重複 |
-| devices | `device_group` + `name` | 已有 unique key |
-
----
-
-## 同步策略：全量覆蓋
-
-YML 代表完整的期望狀態：
-
-- YML 有、DB 無 → **新增**
-- YML 有、DB 有 → **更新**
-- YML 無、DB 有 → **刪除**
-
-整個同步包在一個 GORM 交易中，任何步驟失敗則全部 Rollback。
-
-⚠️ **重要**：空的 config.yml（無 targets）會導致 DB 中所有 targets 被刪除。這是預期行為，但啟動時會輸出醒目的警告訊息。
-
----
-
 ## 邊界情況處理
 
 | 情況 | 處理方式 |
 |------|---------|
 | config.yml 無 `es_connections` 區段 | 跳過 ES 連線同步，indices 使用預設 ES 客戶端 |
 | config.yml 無 `devices` 區段 | 跳過裝置同步，由 Detect() 自動發現 |
-| Index 引用不存在的 `es_connection` name | 同步失敗，Rollback，服務拒絕啟動 |
+| config.yml 無 `targets` 區段 | 輸出 WARNING 並刪除 DB 中所有 targets |
+| `features.timescaledb=false` | BatchWriter 不初始化，偵測結果 history 不寫入，dashboard 回傳空資料 |
 | `features.timescaledb=false` 但 `batch_writer.enabled=true` | BatchWriter 嵌套在 TimescaleDB 開關內，隱式停用 |
-| `features.history=false` 但 dashboard 查詢 history | Dashboard 也應停用；返回空資料 |
-| `setting.yml` 無 `features` 區段 | Go 零值，所有開關為 `false`（安全的簡化模式） |
+| `setting.yml` 無 `features` 區段 | Go 零值，所有開關為 `false`（安全的精簡模式） |
 | `config_source` 未定義 | 預設空字串，同步不執行，現有行為不變 |
+| 不同 target 使用同一 ES index | 自動發現時跨群組設備會被過濾，不寫入錯誤群組 |
+| devices.yml 與 config.yml 同時存在 | `devices.yml` 覆蓋 `config.yml` 的 `devices` 區段 |
 
 ---
 
@@ -783,32 +389,13 @@ YML 代表完整的期望狀態：
 
 **setting.yml**：
 ```yaml
-database:
-  host: "127.0.0.1"
-  port: "3306"
-  user: "logdetect"
-  password: "password"
-  name: "logdetect"
-  # ...
-
-email:
-  user: "alert@customer.com"
-  host: "smtp.customer.com"
-  port: "587"
-  # ...
-
 features:
   timescaledb: false
   es_monitoring: false
   dashboard: false
   auth: false
-  history: true
 
 config_source: "yml"
-
-server:
-  mode: "release"
-  port: ":8006"
 ```
 
 **config.yml**：
@@ -840,56 +427,54 @@ targets:
 devices:
   - device_group: "waf"
     names:
-      - "waf-node-01"
-      - "waf-node-02"
+      - name: "waf-node-01"
+        ha_group: ""
+      - name: "waf-node-02"
+        ha_group: ""
 ```
 
-**客戶操作**：編輯上述兩個 YML 檔案，重啟服務即生效。
+**客戶操作**：編輯上述兩個 YML 檔案，重啟服務即生效。無需操作前端或資料庫。
 
 ### 情境 2：完整部署（有前端，現有行為不變）
 
-**setting.yml** 加入：
+**setting.yml**：
 ```yaml
 features:
   timescaledb: true
   es_monitoring: true
   dashboard: true
   auth: true
-  history: true
 
 config_source: "api"
 ```
 
-所有功能照常運作，同步機制不執行。
+所有功能照常運作，同步機制不執行。配置透過前端 API 管理。
+
+### 情境 3：有前端但同時啟用 YML 同步（混合模式）
+
+不建議。`config_source: "yml"` 每次重啟都會以 YML 覆蓋 DB，
+若前端同時修改了配置，重啟後會被 YML 蓋回去。請擇一使用。
 
 ---
 
-## 測試建議
+## devices.yml 與 config.yml 的關係
 
-### 單元測試
+當專案根目錄存在 `devices.yml` 時，其 `devices` 區段會**覆蓋** `config.yml` 的 `devices` 區段。
 
-1. `TestSyncESConnections_CreateNew` — 空 DB + YML 有連線 → 驗證正確建立
-2. `TestSyncESConnections_UpdateExisting` — DB 有連線，YML 修改 host → 驗證更新
-3. `TestSyncESConnections_DeleteRemoved` — DB 有兩筆，YML 只有一筆 → 驗證另一筆被刪
-4. `TestSyncTargets_CreateWithIndices` — 空 DB + YML 有 target → 驗證 target + indices + 關聯表
-5. `TestSyncTargets_ResolveESConnection` — index 引用 es_connection name → 驗證 ID 正確
-6. `TestSyncTargets_InvalidESConnectionRef` — 引用不存在的 name → 驗證回傳錯誤
-7. `TestSyncDevices_CreateAndPrune` — 驗證新增/刪除裝置
-8. `TestSyncFullTransaction_Rollback` — 注入錯誤 → 驗證 DB 未變更
-9. `TestFeatureToggles_TimescaleDBDisabled` — 驗證 TimescaleDB 未初始化
-10. `TestFeatureToggles_AuthDisabled` — 驗證路由不需 JWT
+```
+載入順序：
+1. loadConfigFile()    → 讀取 config.yml（含 devices 區段）
+2. loadDevicesFile()   → 讀取 devices.yml → 覆蓋 global.YMLConfig.Devices
+3. SyncConfigToDB()    → 以最終的 YMLConfig（已覆蓋）同步至 DB
+```
 
-### 整合測試
-
-1. **精簡部署啟動**：features 全 false + config_source=yml → 啟動無 TimescaleDB 錯誤、DB 有正確的 targets、cron 正常
-2. **完整部署啟動**：features 全 true + config_source=api → 現有行為完全不變
-3. **路由驗證**：auth=false 時 API 不需 JWT token；dashboard=false 時回 404
+適用場景：裝置清單頻繁更動，希望獨立維護而不動 config.yml。
 
 ---
 
 ## 修改記錄
 
-- **日期**: 待定
-- **新增文件**: `structs/features.go`, `services/config_sync.go`
-- **修改文件**: `structs/env.go`, `global/global.go`, `utils/utils.go`, `main.go`, `services/migration.go`, `services/detect.go`, `router/router.go`, `setting.yml`, `config.yml`
-- **影響函數**: `main()`, `LoadEnvironment()`, `viperSettingToModel()`, `loadConfigFile()`, `RunMigrations()`, `Detect()`, `LoadRouter()`
+| 日期 | 版本 | 變更內容 |
+|------|------|---------|
+| 2026-03-30 | 1.1 | 移除 `history` 開關（合併至 `timescaledb`）；新增 `syncDeviceGroups` Step 2；拆分 `syncESConnections` 為 upsert/delete 兩階段；新增跨群組污染防護說明；更新 `YMLDeviceGroup.Names` 為物件陣列格式 |
+| 待定 | 1.0 | 初始版本，新增 Feature Toggles 與 YML 同步機制 |

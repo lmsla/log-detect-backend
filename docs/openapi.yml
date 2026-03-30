@@ -2712,12 +2712,20 @@ components:
               example: 1
             device_group:
               type: string
-              description: Device group name
+              description: Device group name (corresponds to DeviceGroup.name)
               example: "firewall"
             name:
               type: string
-              description: Device name
-              example: "FW-001"
+              description: Device hostname
+              example: "fw-01-primary"
+            ha_group:
+              type: string
+              description: |
+                HA cluster identifier. Devices sharing the same ha_group belong to the same
+                HA cluster and only trigger an alert when ALL members in the group are offline.
+                Empty string means the device is standalone (alert on any offline).
+              example: "fw-cluster-01"
+              default: ""
           required:
             - id
             - device_group

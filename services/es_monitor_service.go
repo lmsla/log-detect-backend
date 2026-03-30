@@ -6,6 +6,7 @@ import (
 	"log-detect/entities"
 	"log-detect/global"
 	"log-detect/models"
+	"time"
 )
 
 // CreateESMonitor 創建 ES 監控配置
@@ -196,8 +197,9 @@ func DeleteESMonitor(id int) models.Response {
 		}
 	}
 
-	// 刪除監控配置
-	if err := global.Mysql.Delete(&monitor).Error; err != nil {
+	// 軟刪除：設定 deleted_at = 當前 Unix 時間戳
+	now := int(time.Now().Unix())
+	if err := global.Mysql.Model(&monitor).Update("deleted_at", now).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     fmt.Sprintf("刪除監控配置失敗: %s", err.Error()),

@@ -179,7 +179,6 @@ func viperSettingToModel() {
 	config.Features.ESMonitoring = viper.GetBool("features.es_monitoring")
 	config.Features.Dashboard = viper.GetBool("features.dashboard")
 	config.Features.Auth = viper.GetBool("features.auth")
-	config.Features.History = viper.GetBool("features.history")
 
 	// ConfigSource（配置來源）
 	config.ConfigSource = viper.GetString("config_source")

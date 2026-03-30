@@ -6,7 +6,6 @@ type FeaturesConfig struct {
 	ESMonitoring bool `mapstructure:"es_monitoring"`
 	Dashboard    bool `mapstructure:"dashboard"`
 	Auth         bool `mapstructure:"auth"`
-	History      bool `mapstructure:"history"`
 }
 
 // YMLConfig config.yml 擴充格式的根結構

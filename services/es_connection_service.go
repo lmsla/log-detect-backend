@@ -8,6 +8,7 @@ import (
 	"log-detect/log"
 	"log-detect/models"
 	"net/http"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 )
@@ -215,8 +216,9 @@ func DeleteESConnection(id int) models.Response {
 		return res
 	}
 
-	// 執行軟刪除
-	err := global.Mysql.Delete(&connection).Error
+	// 軟刪除：設定 deleted_at = 當前 Unix 時間戳，記錄保留於 DB 供查詢過濾
+	now := int(time.Now().Unix())
+	err := global.Mysql.Model(&connection).Update("deleted_at", now).Error
 	if err != nil {
 		res.Msg = fmt.Sprintf("Failed to delete ES connection: %s", err.Error())
 		log.Logrecord_no_rotate("ERROR", res.Msg)
