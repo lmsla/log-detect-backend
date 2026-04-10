@@ -9,7 +9,7 @@ import (
 	"log-detect/middleware"
 	"log-detect/utils"
 
-	// _ "log-detect/docs"
+	_ "log-detect/docs"
 	"log-detect/global"
 
 	swaggerFiles "github.com/swaggo/files"
