@@ -6,28 +6,55 @@ import (
 	"log-detect/global"
 	"log-detect/log"
 	"log-detect/models"
+	"strings"
 	"time"
 )
 
 // GetHistoryDataByDeviceName_TS 從 TimescaleDB 查詢設備歷史 (替代 MySQL 版本)
-func GetHistoryDataByDeviceName_TS(logname string, name string) []entities.History {
+// hours = 0 表示查詢當天全部；hours > 0 表示查詢最近 N 小時
+func GetHistoryDataByDeviceName_TS(logname string, name string, hours int) []entities.History {
 	histories := []entities.History{}
-	date := time.Now().Format("2006-01-02")
+	now := time.Now()
+	date := now.Format("2006-01-02")
+	normalized := strings.ToLower(strings.TrimSpace(logname))
 
-	query := `
-		SELECT device_id, device_group, logname, status,
-		       CASE WHEN lost THEN 'true' ELSE 'false' END as lost,
-		       lost_num, date, hour_time, date_time, timestamp_unix,
-		       period, unit, COALESCE(target_id, 0), COALESCE(index_id, 0),
-		       response_time, data_count,
-		       COALESCE(error_msg, '') as error_msg,
-		       COALESCE(error_code, '') as error_code
-		FROM device_metrics
-		WHERE logname = $1 AND device_id = $2 AND date = $3
-		ORDER BY time DESC
-	`
+	var query string
+	var args []any
 
-	rows, err := global.TimescaleDB.Query(query, logname, name, date)
+	if hours > 0 {
+		// 計算起始 Unix timestamp，只查詢最近 N 小時
+		startUnix := now.Add(-time.Duration(hours) * time.Hour).Unix()
+		query = `
+			SELECT device_id, device_group, logname, status,
+			       CASE WHEN lost THEN 'true' ELSE 'false' END as lost,
+			       lost_num, date, hour_time, date_time, timestamp_unix,
+			       period, unit, COALESCE(target_id, 0), COALESCE(index_id, 0),
+			       response_time, data_count,
+			       COALESCE(error_msg, '') as error_msg,
+			       COALESCE(error_code, '') as error_code
+			FROM device_metrics
+			WHERE LOWER(logname) = $1 AND device_id = $2 AND timestamp_unix >= $3
+			ORDER BY time DESC
+		`
+		args = []any{normalized, name, startUnix}
+	} else {
+		// 預設：查詢當天全部
+		query = `
+			SELECT device_id, device_group, logname, status,
+			       CASE WHEN lost THEN 'true' ELSE 'false' END as lost,
+			       lost_num, date, hour_time, date_time, timestamp_unix,
+			       period, unit, COALESCE(target_id, 0), COALESCE(index_id, 0),
+			       response_time, data_count,
+			       COALESCE(error_msg, '') as error_msg,
+			       COALESCE(error_code, '') as error_code
+			FROM device_metrics
+			WHERE LOWER(logname) = $1 AND device_id = $2 AND date = $3
+			ORDER BY time DESC
+		`
+		args = []any{normalized, name, date}
+	}
+
+	rows, err := global.TimescaleDB.Query(query, args...)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Get History Data By DeviceName error: %s", err.Error()))
 		return histories
@@ -65,7 +92,7 @@ func GetLognameData_TS() models.Response {
 		return res
 	}
 
-	existsQuery := `SELECT EXISTS(SELECT 1 FROM device_metrics WHERE logname = $1 LIMIT 1)`
+	existsQuery := `SELECT EXISTS(SELECT 1 FROM device_metrics WHERE LOWER(logname) = $1 LIMIT 1)`
 	lognames := make([]string, 0, len(indices))
 	seen := make(map[string]struct{})
 	for _, idx := range indices {
@@ -73,18 +100,19 @@ func GetLognameData_TS() models.Response {
 		if name == "" {
 			continue
 		}
-		if _, ok := seen[name]; ok {
+		normalized := strings.ToLower(strings.TrimSpace(name))
+		if _, ok := seen[normalized]; ok {
 			continue
 		}
 		var exists bool
-		if err := global.TimescaleDB.QueryRow(existsQuery, name).Scan(&exists); err != nil {
+		if err := global.TimescaleDB.QueryRow(existsQuery, normalized).Scan(&exists); err != nil {
 			log.Logrecord_no_rotate("ERROR", fmt.Sprintf("failed to check device_metrics logname existence: %s", err.Error()))
 			continue
 		}
 		if !exists {
 			continue
 		}
-		seen[name] = struct{}{}
+		seen[normalized] = struct{}{}
 		lognames = append(lognames, name)
 	}
 
@@ -103,9 +131,10 @@ func GetLognameData_TS() models.Response {
 // CheckLogstatus_TS 檢查日誌狀態 (TimescaleDB 版本)
 func CheckLogstatus_TS(logname string) entities.LognameCheck {
 	var indices entities.Index
+	normalized := strings.ToLower(strings.TrimSpace(logname))
 
 	// 從 MySQL 查詢 indices 配置
-	index_err := global.Mysql.Where("logname = ?", logname).Find(&indices).Error
+	index_err := global.Mysql.Where("LOWER(logname) = ?", normalized).Find(&indices).Error
 	if index_err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find indices data error: %s", index_err.Error()))
 	}
@@ -118,11 +147,11 @@ func CheckLogstatus_TS(logname string) entities.LognameCheck {
 	query := `
 		SELECT COUNT(*)
 		FROM device_metrics
-		WHERE logname = $1 AND date = $2 AND hour_time = $3
+		WHERE LOWER(logname) = $1 AND date = $2 AND hour_time = $3
 	`
 
 	var count int
-	err := global.TimescaleDB.QueryRow(query, logname, date, lastCrontabTime).Scan(&count)
+	err := global.TimescaleDB.QueryRow(query, normalized, date, lastCrontabTime).Scan(&count)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("check log status error: %s", err.Error()))
 		return entities.LognameCheck{Name: logname, Lost: "true"}

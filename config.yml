@@ -20,28 +20,29 @@ es_connections:
 # 監控目標（Targets）
 # -------------------------------------------------------
 targets:
-  - subject: "NCKU-forti 防火牆離線告警"  # 郵件主旨
+  - subject: "NCKU-forti 防火牆離線告警" # 郵件主旨
     receiver:
       - "russell.chen@bimap.co"
     enable: true
     indices:
-      - logname: "NCKU-forti"          # 對應 history / detect API 的識別名稱
-        index: "logstash-forti-group"        # ES 索引名稱（支援萬用字元，如 logstash-forti-*）
-        device_group: "forti"          # 對應 devices.yml 的 device_group
-        field: "host.keyword"          # ES 聚合用欄位
-        period: "minutes"              # 偵測週期單位：minutes / hours
-        unit: 1                        # 偵測週期數值（每 1 分鐘偵測一次）
-        es_connection: "default-es"    # 對應上方 es_connections 的 name
+      - logname: "firewall" # 對應 history / detect API 的識別名稱
+        index: "logstash-forti-group" # ES 索引名稱（支援萬用字元，如 logstash-forti-*）
+        device_group: "firewall" # 對應 devices.yml 的 device_group
+        field: "host.keyword" # ES 聚合用欄位
+        period: "minutes" # 偵測週期單位：minutes / hours
+        unit: 1 # 偵測週期數值（每 1 分鐘偵測一次）
+        es_connection: "default-es" # 對應上方 es_connections 的 name
 
-  - subject: "NCKU-waf WAF 離線告警"
-    receiver:
-      - "russell.chen@bimap.co"
-    enable: true
-    indices:
-      - logname: "NCKU-waf"
-        index: "logstash-forti-group"        # 測試階段與 forti 共用同一索引
-        device_group: "waf"
-        field: "host.keyword"
-        period: "minutes"
-        unit: 1
-        es_connection: "default-es"
+
+  # - subject: "NCKU-waf WAF 離線告警"
+  #   receiver:
+  #     - "russell.chen@bimap.co"
+  #   enable: true
+  #   indices:
+  #     - logname: "NCKU-waf"
+  #       index: "logstash-forti-group"        # 測試階段與 forti 共用同一索引
+  #       device_group: "waf"
+  #       field: "host.keyword"
+  #       period: "minutes"
+  #       unit: 1
+  #       es_connection: "default-es"

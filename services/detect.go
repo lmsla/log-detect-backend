@@ -64,19 +64,19 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	var new_list []entities.Device
 
 	// 資產管理清單未建立，自動把從 ES 撈出的設備加入群組中
-	// 同樣跳過已存在於其他 group 的設備，避免跨群組污染
+	// 只要同群組中不存在，就允許建立；同名設備可存在於不同群組
 	if len(deviceslist) == 0 {
 		for _, device := range result_list {
 			var existCount int64
 			if err := global.Mysql.Model(&entities.Device{}).
-				Where("name = ?", device).
+				Where("device_group = ? AND name = ?", device_group, device).
 				Count(&existCount).Error; err != nil {
 				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check device existence failed for '%s': %s", device, err.Error()))
 				continue
 			}
 			if existCount > 0 {
 				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
-					"Auto-discovery skipped: device '%s' already exists in another group (current group: %s)",
+					"Auto-discovery skipped: device '%s' already exists in current group '%s'",
 					device, device_group))
 				continue
 			}
@@ -106,21 +106,19 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	fmt.Println("新增的設備:", added)
 
 	// 將偵測到的新設備寫入 devices table 中
-	// 注意：若設備已存在於其他 device_group，則跳過自動發現
-	// 原因：不同 logname 可能查詢同一個 ES index（例如測試環境），
-	//       若不過濾，同一設備會被誤寫入多個 group，導致跨群組告警污染
+	// 只檢查同一個 device_group 是否已存在，允許同名設備出現在不同群組
 	if len(added) != 0 {
 		for _, device := range added {
 			var existCount int64
 			if err := global.Mysql.Model(&entities.Device{}).
-				Where("name = ?", device).
+				Where("device_group = ? AND name = ?", device_group, device).
 				Count(&existCount).Error; err != nil {
 				log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check device existence failed for '%s': %s", device, err.Error()))
 				continue
 			}
 			if existCount > 0 {
 				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
-					"Auto-discovery skipped: device '%s' already exists in another group (current group: %s)",
+					"Auto-discovery skipped: device '%s' already exists in current group '%s'",
 					device, device_group))
 				continue
 			}

@@ -5,7 +5,7 @@
 # 此檔案會覆蓋 config.yml 中的 devices 區段（loadDevicesFile 後置載入）
 
 devices:
-  - device_group: "forti"
+  - device_group: "firewall"
     names:
       - name: "fw-01-primary"
         ha_group: "fw-cluster-01"
@@ -13,10 +13,14 @@ devices:
         ha_group: "fw-cluster-01"
       - name: "fw-02"
         ha_group: ""
-
-  - device_group: "waf"
-    names:
       - name: "waf-01"
         ha_group: ""
       - name: "waf-02"
-        ha_group: ""
+        ha_group: ""        
+
+  # - device_group: "waf"
+  #   names:
+  #     - name: "waf-01"
+  #       ha_group: ""
+  #     - name: "waf-02"
+  #       ha_group: ""

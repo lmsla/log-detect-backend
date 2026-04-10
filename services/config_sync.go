@@ -135,11 +135,35 @@ func syncESConnectionsUpsert(tx *gorm.DB, cfg *structs.YMLConfig) error {
 		}
 
 		if result.Error == gorm.ErrRecordNotFound {
-			// 新增（或曾被軟刪除後重新出現：建立新記錄）
-			if err := tx.Create(&conn).Error; err != nil {
-				return fmt.Errorf("create ES connection '%s' failed: %w", ymlConn.Name, err)
+			// 找不到有效記錄，先確認是否有同名的軟刪除記錄
+			// 若有：恢復它（YML 是唯一來源，出現在 YML 即代表應為啟用狀態）
+			// 若無：建立新記錄
+			// 注意：直接 Create 會因 name uniqueIndex 與軟刪除記錄衝突而失敗
+			var softDeleted entities.ESConnection
+			softDeleteResult := tx.Where("name = ?", ymlConn.Name).First(&softDeleted)
+			if softDeleteResult.Error == nil {
+				// 恢復軟刪除記錄，並同步 YML 最新設定
+				if err := tx.Model(&softDeleted).Updates(map[string]interface{}{
+					"deleted_at":  nil,
+					"host":        conn.Host,
+					"port":        conn.Port,
+					"username":    conn.Username,
+					"password":    conn.Password,
+					"enable_auth": conn.EnableAuth,
+					"use_tls":     conn.UseTLS,
+					"is_default":  conn.IsDefault,
+					"description": conn.Description,
+				}).Error; err != nil {
+					return fmt.Errorf("restore soft-deleted ES connection '%s' failed: %w", ymlConn.Name, err)
+				}
+				log.Printf("Restored soft-deleted ES connection: %s (ID: %d)", ymlConn.Name, softDeleted.ID)
+			} else {
+				// 真的沒有任何同名記錄，建立新的
+				if err := tx.Create(&conn).Error; err != nil {
+					return fmt.Errorf("create ES connection '%s' failed: %w", ymlConn.Name, err)
+				}
+				log.Printf("Created ES connection: %s", ymlConn.Name)
 			}
-			log.Printf("Created ES connection: %s", ymlConn.Name)
 		} else if result.Error == nil {
 			// 更新現有連線
 			conn.ID = existing.ID

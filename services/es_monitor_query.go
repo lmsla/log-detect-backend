@@ -8,6 +8,7 @@ import (
 	"log-detect/global"
 	"log-detect/log"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -156,7 +157,7 @@ func (s *ESMonitorQueryService) GetMetricsTimeSeries(monitorID int, startTime, e
 func (s *ESMonitorQueryService) GetAllMonitorsStatus() ([]entities.ESMonitorStatus, error) {
 	// 先從 MySQL 獲取所有監控配置（包含 ESConnection）
 	var monitors []entities.ElasticsearchMonitor
-	if err := global.Mysql.Preload("ESConnection").Find(&monitors).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Where("deleted_at IS NULL").Find(&monitors).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch monitor configs: %w", err)
 	}
 
@@ -218,14 +219,27 @@ func (s *ESMonitorQueryService) GetAllMonitorsStatus() ([]entities.ESMonitorStat
 func (s *ESMonitorQueryService) GetESStatistics() (*entities.ESStatistics, error) {
 	var stats entities.ESStatistics
 
-	// 從 MySQL 獲取監控器總數
-	var totalMonitors int64
-	if err := global.Mysql.Model(&entities.ElasticsearchMonitor{}).Count(&totalMonitors).Error; err != nil {
+	var monitors []entities.ElasticsearchMonitor
+	if err := global.Mysql.Where("deleted_at IS NULL").Find(&monitors).Error; err != nil {
 		return nil, err
 	}
-	stats.TotalMonitors = int(totalMonitors)
+	stats.TotalMonitors = len(monitors)
+	stats.LastUpdateTime = "N/A"
 
-	// 從 TimescaleDB 獲取最新狀態統計
+	if len(monitors) == 0 {
+		return &stats, nil
+	}
+
+	monitorIDs := make([]int, 0, len(monitors))
+	placeholders := make([]string, 0, len(monitors))
+	args := make([]any, 0, len(monitors))
+	for i, monitor := range monitors {
+		monitorIDs = append(monitorIDs, monitor.ID)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
+		args = append(args, monitor.ID)
+	}
+
+	// 僅統計未軟刪除監控器最近一小時的最新資料
 	query := `
 		WITH latest_metrics AS (
 			SELECT DISTINCT ON (monitor_id)
@@ -242,7 +256,8 @@ func (s *ESMonitorQueryService) GetESStatistics() (*entities.ESStatistics, error
 				total_size_bytes,
 				time
 			FROM es_metrics
-			WHERE time > NOW() - INTERVAL '1 hour'
+			WHERE monitor_id IN (%s)
+			  AND time > NOW() - INTERVAL '1 hour'
 			ORDER BY monitor_id, time DESC
 		)
 		SELECT
@@ -259,9 +274,10 @@ func (s *ESMonitorQueryService) GetESStatistics() (*entities.ESStatistics, error
 			MAX(time) AS last_update
 		FROM latest_metrics
 	`
+	query = fmt.Sprintf(query, strings.Join(placeholders, ","))
 
 	var lastUpdate sql.NullTime
-	err := s.db.QueryRow(query).Scan(
+	err := s.db.QueryRow(query, args...).Scan(
 		&stats.OnlineMonitors,
 		&stats.OfflineMonitors,
 		&stats.WarningMonitors,
@@ -290,18 +306,18 @@ func (s *ESMonitorQueryService) GetESStatistics() (*entities.ESStatistics, error
 	// 格式化最後更新時間
 	if lastUpdate.Valid {
 		stats.LastUpdateTime = lastUpdate.Time.Format("2006-01-02 15:04:05")
-	} else {
-		stats.LastUpdateTime = "N/A"
 	}
 
-	// 查詢活躍告警數量
+	// 查詢未刪除監控器的活躍告警數量
 	alertQuery := `
 		SELECT COUNT(*)
 		FROM es_alert_history
-		WHERE status = 'active'
+		WHERE monitor_id IN (%s)
+		  AND status = 'active'
 		  AND time > NOW() - INTERVAL '24 hours'
 	`
-	_ = s.db.QueryRow(alertQuery).Scan(&stats.ActiveAlerts)
+	alertQuery = fmt.Sprintf(alertQuery, strings.Join(placeholders, ","))
+	_ = s.db.QueryRow(alertQuery, args...).Scan(&stats.ActiveAlerts)
 
 	return &stats, nil
 }

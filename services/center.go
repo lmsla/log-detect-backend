@@ -13,7 +13,11 @@ import (
 )
 
 func LoadCrontab() {
-
+	// 若已存在舊的 cron 實例（例如重新初始化時），先停止它再建新的
+	// 避免舊 cron goroutine 繼續在背景執行並觸發 Detect()
+	if global.Crontab != nil {
+		global.Crontab.Stop()
+	}
 	global.Crontab = cron.New()
 	global.Crontab.Start()
 }
@@ -63,6 +67,12 @@ func Control_center() {
 
 	if err := global.Mysql.Exec("TRUNCATE TABLE cron_lists").Error; err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("error when truncate cronlist table: %s", err.Error()))
+	}
+
+	// 同步清除 in-memory cron 中的所有 entry，確保與 cron_lists 狀態一致
+	// 若不清除，重啟後舊的 entry 可能仍在記憶體中，導致 cron entry 隨重啟次數累積
+	for _, entry := range global.Crontab.Entries() {
+		global.Crontab.Remove(entry.ID)
 	}
 
 	var cronjob string

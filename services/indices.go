@@ -6,7 +6,30 @@ import (
 	"log-detect/global"
 	"log-detect/log"
 	"log-detect/models"
+	"strings"
 )
+
+func normalizeIndexLogname(logname string) string {
+	return strings.TrimSpace(logname)
+}
+
+func hasDuplicateIndexLogname(logname string, excludeID int) (bool, error) {
+	normalized := strings.ToLower(strings.TrimSpace(logname))
+	if normalized == "" {
+		return false, nil
+	}
+
+	query := global.Mysql.Model(&entities.Index{}).Where("LOWER(logname) = ?", normalized)
+	if excludeID > 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
 
 // 新增 indices
 func CreateIndices(indices entities.Index) models.Response {
@@ -15,13 +38,19 @@ func CreateIndices(indices entities.Index) models.Response {
 	res.Success = false
 	res.Body = entities.Index{}
 
-	// result := global.Mysql.Where("name = ?", receiver.Name).First(&entities.Receiver{})
-	// if result.RowsAffected > 0 {
-	// 	res.Msg = "receiver Name already existed"
-	// 	return res
-	// }
+	indices.Logname = normalizeIndexLogname(indices.Logname)
+	duplicated, err := hasDuplicateIndexLogname(indices.Logname, 0)
+	if err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check duplicate indices logname Fail: %s", err.Error()))
+		res.Msg = "Check duplicate indices logname Fail"
+		return res
+	}
+	if duplicated {
+		res.Msg = "logname already existed"
+		return res
+	}
 
-	err := global.Mysql.Create(&indices).Error
+	err = global.Mysql.Create(&indices).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Create indices Fail: %s", err.Error()))
 		res.Msg = "Create indices Fail"
@@ -43,6 +72,18 @@ func UpdateIndices(indices entities.Index) models.Response {
 	res := models.Response{}
 	res.Success = false
 	res.Body = []entities.Index{}
+
+	indices.Logname = normalizeIndexLogname(indices.Logname)
+	duplicated, err := hasDuplicateIndexLogname(indices.Logname, indices.ID)
+	if err != nil {
+		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Check duplicate indices logname Fail: %s", err.Error()))
+		res.Msg = "Check duplicate indices logname Fail"
+		return res
+	}
+	if duplicated {
+		res.Msg = "logname already existed"
+		return res
+	}
 
 	entriesTable, err := GetEntryByIndiceID(indices.ID)
 	if err != nil {

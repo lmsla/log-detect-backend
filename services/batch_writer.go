@@ -37,6 +37,8 @@ func NewBatchWriter(db *sql.DB, batchSize int, flushInterval time.Duration) *Bat
 	}
 
 	// 預編譯 device_metrics SQL 語句
+	// ON CONFLICT DO NOTHING：搭配 uniq_device_metrics_time_device_logname 約束，
+	// 防止同一設備在同一 timestamp 下因 cron 重複觸發或 flush race condition 寫入重複資料
 	var err error
 	bw.stmt, err = db.Prepare(`
 		INSERT INTO device_metrics
@@ -44,6 +46,7 @@ func NewBatchWriter(db *sql.DB, batchSize int, flushInterval time.Duration) *Bat
 		 date, hour_time, date_time, timestamp_unix, period, unit,
 		 target_id, index_id, response_time, data_count, error_msg, error_code, metadata)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+		ON CONFLICT (time, device_id, logname) DO NOTHING
 	`)
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("Failed to prepare batch insert statement: %s", err.Error()))
@@ -101,12 +104,14 @@ func (bw *BatchWriter) AddHistory(history any) error {
 	case entities.History:
 		bw.batch = append(bw.batch, v)
 		if len(bw.batch) >= bw.batchSize {
-			go bw.flushDeviceMetrics()
+			// 注意：flushDeviceMetrics 需在持鎖狀態下同步呼叫，
+			// 避免 ticker goroutine 同時進入 flushBatch() 造成同一批資料被寫入兩次
+			bw.flushDeviceMetrics()
 		}
 	case entities.ESMetric:
 		bw.esBatch = append(bw.esBatch, v)
 		if len(bw.esBatch) >= bw.batchSize {
-			go bw.flushESMetrics()
+			bw.flushESMetrics()
 		}
 	default:
 		return fmt.Errorf("unsupported history type: %T", history)

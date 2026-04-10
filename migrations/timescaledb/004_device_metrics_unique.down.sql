@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS uniq_device_metrics_time_device_logname;

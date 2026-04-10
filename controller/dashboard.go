@@ -168,8 +168,8 @@ func GetGroupStatistics(c *gin.Context) {
 func GetDeviceStatusOverview(c *gin.Context) {
 	logname := c.Query("logname")
 
-	// 使用現有的 DataDealing 函數來獲取設備狀態
-	res := services.DataDealing(logname)
+	// 使用現有的 DataDealing 函數來獲取設備狀態（dashboard 固定取全天資料）
+	res := services.DataDealing(logname, 0)
 
 	if !res.Success {
 		c.JSON(http.StatusInternalServerError, res)

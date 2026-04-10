@@ -77,6 +77,10 @@ func loadDevicesFile() {
 		global.YMLConfig = &structs.YMLConfig{}
 	}
 	global.YMLConfig.Devices = devicesConfig.Devices
+	if global.EnvConfig != nil && global.EnvConfig.ConfigSource == "api" {
+		fmt.Printf("偵測到 devices.yml：已載入 %d 個裝置群組至記憶體（API 模式，不會同步至 DB）\n", len(devicesConfig.Devices))
+		return
+	}
 	fmt.Printf("已從 devices.yml 載入 %d 個裝置群組\n", len(devicesConfig.Devices))
 }
 

@@ -200,7 +200,7 @@ func DeleteESConnection(id int) models.Response {
 
 	// 檢查是否有 Index 正在使用此連線
 	var indexCount int64
-	global.Mysql.Model(&entities.Index{}).Where("es_connection_id = ?", id).Count(&indexCount)
+	global.Mysql.Model(&entities.Index{}).Where("es_connection_id = ? AND deleted_at IS NULL", id).Count(&indexCount)
 	if indexCount > 0 {
 		res.Msg = fmt.Sprintf("Cannot delete ES connection: %d index(es) are still using it", indexCount)
 		log.Logrecord_no_rotate("WARNING", res.Msg)
@@ -209,7 +209,7 @@ func DeleteESConnection(id int) models.Response {
 
 	// 檢查是否有 Monitor 正在使用此連線
 	var monitorCount int64
-	global.Mysql.Model(&entities.ElasticsearchMonitor{}).Where("es_connection_id = ?", id).Count(&monitorCount)
+	global.Mysql.Model(&entities.ElasticsearchMonitor{}).Where("es_connection_id = ? AND deleted_at IS NULL", id).Count(&monitorCount)
 	if monitorCount > 0 {
 		res.Msg = fmt.Sprintf("Cannot delete ES connection: %d monitor(s) are still using it", monitorCount)
 		log.Logrecord_no_rotate("WARNING", res.Msg)

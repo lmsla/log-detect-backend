@@ -97,7 +97,7 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 
 	// 檢查監控配置是否存在
 	var existingMonitor entities.ElasticsearchMonitor
-	if err := global.Mysql.First(&existingMonitor, monitor.ID).Error; err != nil {
+	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", monitor.ID).First(&existingMonitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "監控配置不存在",
@@ -115,7 +115,7 @@ func UpdateESMonitor(monitor entities.ElasticsearchMonitor) models.Response {
 
 	// 重新載入更新後的監控配置（含 ESConnection）
 	var updatedMonitor entities.ElasticsearchMonitor
-	if err := global.Mysql.Preload("ESConnection").First(&updatedMonitor, monitor.ID).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Where("id = ? AND deleted_at IS NULL", monitor.ID).First(&updatedMonitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "無法載入更新後的監控配置",
@@ -144,7 +144,7 @@ func GetAllESMonitors() models.Response {
 	var monitors []entities.ElasticsearchMonitor
 
 	// Preload ESConnection 以便排程器和其他服務使用
-	if err := global.Mysql.Preload("ESConnection").Find(&monitors).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Where("deleted_at IS NULL").Find(&monitors).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     fmt.Sprintf("查詢監控配置失敗: %s", err.Error()),
@@ -163,7 +163,7 @@ func GetESMonitorByID(id int) models.Response {
 	var monitor entities.ElasticsearchMonitor
 
 	// Preload ESConnection
-	if err := global.Mysql.Preload("ESConnection").First(&monitor, id).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Where("id = ? AND deleted_at IS NULL", id).First(&monitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "監控配置不存在",
@@ -182,7 +182,7 @@ func DeleteESMonitor(id int) models.Response {
 	var monitor entities.ElasticsearchMonitor
 
 	// 檢查監控配置是否存在
-	if err := global.Mysql.First(&monitor, id).Error; err != nil {
+	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", id).First(&monitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "監控配置不存在",
@@ -220,7 +220,7 @@ func ToggleESMonitor(id int, enable bool) models.Response {
 	var monitor entities.ElasticsearchMonitor
 
 	// 檢查監控配置是否存在
-	if err := global.Mysql.First(&monitor, id).Error; err != nil {
+	if err := global.Mysql.Where("id = ? AND deleted_at IS NULL", id).First(&monitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "監控配置不存在",
@@ -237,7 +237,7 @@ func ToggleESMonitor(id int, enable bool) models.Response {
 
 	// 重新載入更新後的監控配置（含 ESConnection）
 	var updatedMonitor entities.ElasticsearchMonitor
-	if err := global.Mysql.Preload("ESConnection").First(&updatedMonitor, id).Error; err != nil {
+	if err := global.Mysql.Preload("ESConnection").Where("id = ? AND deleted_at IS NULL", id).First(&updatedMonitor).Error; err != nil {
 		return models.Response{
 			Success: false,
 			Msg:     "無法載入更新後的監控配置",

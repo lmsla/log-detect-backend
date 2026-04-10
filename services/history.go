@@ -6,6 +6,7 @@ import (
 	"log-detect/global"
 	"log-detect/log"
 	"log-detect/models"
+	"strings"
 	"time"
 )
 
@@ -31,7 +32,8 @@ func CreateMailHistory(mail_hisroty entities.MailHistory) models.Response {
 func GetIndicesDataByLogname(logname string) (entities.Index, error) {
 
 	indices := entities.Index{}
-	err := global.Mysql.Where("logname = ?", logname).Find(&indices).Error
+	normalized := strings.ToLower(strings.TrimSpace(logname))
+	err := global.Mysql.Where("LOWER(logname) = ?", normalized).Find(&indices).Error
 	if err != nil {
 		log.Logrecord_no_rotate("ERROR", fmt.Sprintf("find devices data error: %s", err.Error()))
 		return indices, err
@@ -40,15 +42,17 @@ func GetIndicesDataByLogname(logname string) (entities.Index, error) {
 }
 
 // 以 logname , device name 查詢歷史紀錄
-func GetHistoryDataByDeviceName(logname string, name string) []entities.History {
-	return GetHistoryDataByDeviceName_TS(logname, name)
+// hours = 0 表示查詢當天全部；hours > 0 表示查詢最近 N 小時
+func GetHistoryDataByDeviceName(logname string, name string, hours int) []entities.History {
+	return GetHistoryDataByDeviceName_TS(logname, name, hours)
 }
 
-func GenerateTimeArray(period string, unit int) []string {
+// GenerateTimeArray 產生時間點陣列，用於前端格線補全
+// startTime 為起始時間（查詢時間範圍起點），0 表示從當天 00:00 開始
+func GenerateTimeArray(period string, unit int, startTime time.Time) []string {
 	var timeArray []string
 
 	now := time.Now()
-	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	// 计算时间间隔
 	var duration time.Duration
@@ -62,16 +66,42 @@ func GenerateTimeArray(period string, unit int) []string {
 		return nil
 	}
 
-	// 從當天 00:00 開始，根據時間間隔生成時間數據數组
-	for t := startOfDay; t.Before(now); t = t.Add(duration) {
+	// 將 startTime 對齊到最近的 crontab 時間點（向下取整）
+	alignedStart := alignToCrontab(startTime, duration)
+
+	// 從 alignedStart 開始，根據時間間隔生成時間點陣列
+	for t := alignedStart; t.Before(now) || t.Equal(now); t = t.Add(duration) {
 		timeArray = append(timeArray, t.Format("15:04"))
 	}
 
 	return timeArray
 }
 
+// alignToCrontab 將時間向下對齊到最近的 crontab 時間點
+func alignToCrontab(t time.Time, duration time.Duration) time.Time {
+	startOfDay := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	elapsed := t.Sub(startOfDay)
+	aligned := elapsed.Truncate(duration)
+	return startOfDay.Add(aligned)
+}
+
+// lostSeverity 回傳 lost 狀態的嚴重程度，數字越大越嚴重
+// 用於同一時間點有多筆 row 時，保留最嚴重的狀態
+func lostSeverity(lost string) int {
+	switch lost {
+	case "true":
+		return 2
+	case "false":
+		return 1
+	default: // "none"
+		return 0
+	}
+}
+
 // 處理 history data
-func DataDealing(logname string) models.Response {
+// hours = 0 表示查詢當天全部；hours = 1/3/6 表示查詢最近 N 小時
+func DataDealing(logname string, hours int) models.Response {
+	logname = strings.TrimSpace(logname)
 
 	res := models.Response{}
 	res.Success = false
@@ -87,37 +117,47 @@ func DataDealing(logname string) models.Response {
 	}
 	var history_final_data []entities.HistoryData
 
-	timeArray := GenerateTimeArray(indicesData.Period, indicesData.Unit)
-	// fmt.Println(len(timeArray))
+	// 決定時間範圍起始點
+	var startTime time.Time
+	if hours > 0 {
+		startTime = time.Now().Add(-time.Duration(hours) * time.Hour)
+	} else {
+		// 全天：從當天 00:00 開始
+		now := time.Now()
+		startTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	}
+
+	timeArray := GenerateTimeArray(indicesData.Period, indicesData.Unit, startTime)
 
 	for _, device := range device_list {
-		history_data := GetHistoryDataByDeviceName(logname, device.Name)
-		var history_tmp_data []entities.HistoryData
-		// fmt.Println("device.Name",device.Name)
-		// fmt.Println(history_data)
-		// 將歷史資料轉換為 map 方便查找
-		historyMap := make(map[string]bool)
+		history_data := GetHistoryDataByDeviceName(logname, device.Name, hours)
 
+		// deduplicatedMap: key=hour_time, value=最嚴重的 lost 狀態
+		// TimescaleDB 每次偵測都寫一行，同一分鐘可能有多筆 row，
+		// 合併時優先保留 lost:"true"（lost > false > none）
+		deduplicatedMap := make(map[string]string) // time -> lost
 		for _, data := range history_data {
-			history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: data.Name, Time: data.Time, Lost: data.Lost})
-			historyMap[data.Time] = true
+			existing, seen := deduplicatedMap[data.Time]
+			if !seen || lostSeverity(data.Lost) > lostSeverity(existing) {
+				deduplicatedMap[data.Time] = data.Lost
+			}
 		}
 
-		// 匹配時間數組中的時間點與歷史資料中的時間
+		var history_tmp_data []entities.HistoryData
+		for timePoint, lost := range deduplicatedMap {
+			history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: lost})
+		}
+
+		// Gap-fill：timeArray 中沒有資料的時間點補 "none"
 		for _, timePoint := range timeArray {
-			// 如果時間點不在歷史資料中，則添加新的记录
-			if _, ok := historyMap[timePoint]; !ok {
-				// history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: "false"})
+			if _, ok := deduplicatedMap[timePoint]; !ok {
 				history_tmp_data = append(history_tmp_data, entities.HistoryData{Name: device.Name, Time: timePoint, Lost: "none"})
 			}
 		}
-		// 扁平化 Array 將 history_tmp_data 中的每個元件塞入 history_final_data 中
+
 		history_final_data = append(history_final_data, history_tmp_data...)
-		// fmt.Println(history_tmp_data)
-		// fmt.Println(len(history_tmp_data))
 	}
-	// fmt.Println(history_final_data)
-	// fmt.Println(len(history_final_data))
+
 	res.Body = history_final_data
 	res.Success = true
 	return res
@@ -195,4 +235,3 @@ func CreateAlertHistory(alert entities.AlertHistory) models.Response {
 	res.Msg = "Create alert history success"
 	return res
 }
-
