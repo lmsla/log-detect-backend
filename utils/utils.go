@@ -1,10 +1,12 @@
 package utils
 
 import (
-	"log-detect/global"
-	"log-detect/structs"
 	"fmt"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
+	"log-detect/global"
+	"log-detect/structs"
+	"os"
 	"strings"
 )
 
@@ -26,7 +28,7 @@ func loadConfigFile() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			fmt.Println("未發現 config.yml，跳過配置載入（適用於 API 模式）")
 			global.TargetStruct = &structs.TargetStruct{}
-			global.YMLConfig = &structs.YMLConfig{}
+			global.SetYMLConfig(&structs.YMLConfig{})
 			return
 		}
 		panic(err)
@@ -44,20 +46,15 @@ func loadConfigFile() {
 	if err := configViper.Unmarshal(&ymlConfig); err != nil {
 		fmt.Printf("Warning: could not unmarshal expanded config.yml: %v\n", err)
 	}
-	global.YMLConfig = &ymlConfig
+	global.SetYMLConfig(&ymlConfig)
 }
-
 
 // loadDevicesFile 載入獨立的 devices.yml 裝置配置檔
 // 如果檔案不存在則跳過（不影響啟動）
 func loadDevicesFile() {
-	devicesViper := viper.New()
-	devicesViper.SetConfigName("devices")
-	devicesViper.SetConfigType("yml")
-	devicesViper.AddConfigPath(".")
-
-	if err := devicesViper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+	devicesConfig, _, err := ReadDevicesFileConfig()
+	if err != nil {
+		if os.IsNotExist(err) {
 			fmt.Println("未發現 devices.yml，跳過裝置配置載入")
 			return
 		}
@@ -65,23 +62,45 @@ func loadDevicesFile() {
 		return
 	}
 
-	var devicesConfig struct {
-		Devices []structs.YMLDeviceGroup `yaml:"devices" mapstructure:"devices"`
-	}
-	if err := devicesViper.Unmarshal(&devicesConfig); err != nil {
-		fmt.Printf("Warning: 解析 devices.yml 失敗: %v\n", err)
+	baseConfig := cloneYMLConfig(global.GetYMLConfig())
+	baseConfig.Devices = devicesConfig.Devices
+	baseConfig.DisabledDevices = devicesConfig.DisabledDevices
+	global.SetYMLConfig(baseConfig)
+
+	if global.EnvConfig != nil && global.EnvConfig.ConfigSource == "api" {
+		fmt.Printf("偵測到 devices.yml：已載入 %d 個裝置群組、%d 個停用群組至記憶體（API 模式，不會同步至 DB）\n",
+			len(devicesConfig.Devices), len(devicesConfig.DisabledDevices))
 		return
+	}
+	fmt.Printf("已從 devices.yml 載入 %d 個裝置群組、%d 個停用群組\n",
+		len(devicesConfig.Devices), len(devicesConfig.DisabledDevices))
+}
+
+func ReadDevicesFileConfig() (*structs.YMLConfig, []byte, error) {
+	data, err := os.ReadFile("devices.yml")
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if global.YMLConfig == nil {
-		global.YMLConfig = &structs.YMLConfig{}
+	devicesConfig := &structs.YMLConfig{}
+	if err := yaml.Unmarshal(data, devicesConfig); err != nil {
+		fmt.Printf("Warning: 解析 devices.yml 失敗: %v\n", err)
+		return nil, nil, err
 	}
-	global.YMLConfig.Devices = devicesConfig.Devices
-	if global.EnvConfig != nil && global.EnvConfig.ConfigSource == "api" {
-		fmt.Printf("偵測到 devices.yml：已載入 %d 個裝置群組至記憶體（API 模式，不會同步至 DB）\n", len(devicesConfig.Devices))
-		return
+
+	return devicesConfig, data, nil
+}
+
+func cloneYMLConfig(cfg *structs.YMLConfig) *structs.YMLConfig {
+	if cfg == nil {
+		return &structs.YMLConfig{}
 	}
-	fmt.Printf("已從 devices.yml 載入 %d 個裝置群組\n", len(devicesConfig.Devices))
+	cloned := *cfg
+	cloned.ESConnections = append([]structs.YMLESConnection(nil), cfg.ESConnections...)
+	cloned.Targets = append([]structs.YMLTarget(nil), cfg.Targets...)
+	cloned.Devices = append([]structs.YMLDeviceGroup(nil), cfg.Devices...)
+	cloned.DisabledDevices = append([]structs.YMLDisabledDeviceGroup(nil), cfg.DisabledDevices...)
+	return &cloned
 }
 
 func viperconfigToModel() {
@@ -153,6 +172,10 @@ func viperSettingToModel() {
 
 	config.BatchWriter.BatchSize = viper.GetInt("batch_writer.batch_size")
 	config.BatchWriter.FlushInterval = viper.GetString("batch_writer.flush_interval")
+
+	// YML Reload
+	config.YMLReload.DevicesEnabled = viper.GetBool("yml_reload.devices_enabled")
+	config.YMLReload.DevicesInterval = viper.GetString("yml_reload.devices_interval")
 
 	config.Cors.Allow.Headers = viper.GetStringSlice("cors.allow.headers")
 

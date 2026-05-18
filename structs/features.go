@@ -10,9 +10,10 @@ type FeaturesConfig struct {
 
 // YMLConfig config.yml 擴充格式的根結構
 type YMLConfig struct {
-	ESConnections []YMLESConnection `yaml:"es_connections" mapstructure:"es_connections"`
-	Targets       []YMLTarget       `yaml:"targets" mapstructure:"targets"`
-	Devices       []YMLDeviceGroup  `yaml:"devices" mapstructure:"devices"`
+	ESConnections   []YMLESConnection        `yaml:"es_connections" mapstructure:"es_connections"`
+	Targets         []YMLTarget              `yaml:"targets" mapstructure:"targets"`
+	Devices         []YMLDeviceGroup         `yaml:"devices" mapstructure:"devices"`
+	DisabledDevices []YMLDisabledDeviceGroup `yaml:"disabled_devices" mapstructure:"disabled_devices"`
 }
 
 // YMLESConnection ES 連線配置（YML 格式）
@@ -57,4 +58,16 @@ type YMLDeviceGroup struct {
 type YMLDeviceItem struct {
 	Name    string `yaml:"name" mapstructure:"name"`
 	HAGroup string `yaml:"ha_group" mapstructure:"ha_group"`
+}
+
+// YMLDisabledDeviceGroup 停用設備群組配置
+type YMLDisabledDeviceGroup struct {
+	DeviceGroup string              `yaml:"device_group" mapstructure:"device_group"`
+	Devices     []YMLDisabledDevice `yaml:"devices" mapstructure:"devices"`
+}
+
+// YMLDisabledDevice 停用設備配置
+type YMLDisabledDevice struct {
+	Name   string `yaml:"name" mapstructure:"name"`
+	Reason string `yaml:"reason" mapstructure:"reason"`
 }

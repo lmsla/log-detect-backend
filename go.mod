@@ -10,6 +10,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/gin-swagger v1.6.0
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.5.3
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -90,5 +91,4 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

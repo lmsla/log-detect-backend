@@ -11,16 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// SyncConfigToDB 將 config.yml 的擴充配置同步至資料庫
-// 策略：以 YML 為唯一來源，全量覆蓋（upsert + 刪除 YML 中已移除的記錄）
+// SyncConfigToDB 將 config.yml / devices.yml 的擴充配置同步至資料庫
+// 策略：
+//   - targets / indices / ES connections：以 YML 為唯一來源，採 upsert + 刪除
+//   - devices：只做 upsert，不刪除未列於 YML 的自動發現設備
+//   - disabled_devices：明確停用並從 DB 移除
+//
 // 執行順序：
 //  1. ES Connections upsert（先建立連線供後續 Indices 參照）
 //  2. Device Groups upsert（先建立群組，devices 才能正確關聯）
 //  3. Targets + Indices upsert + 刪除
-//  4. Devices upsert + 刪除
+//  4. Devices upsert
+//     4.5 Disabled devices delete
 //  5. ES Connections 刪除（必須在 Indices 清理後才執行，避免 FK 牽連）
 func SyncConfigToDB() error {
-	cfg := global.YMLConfig
+	cfg := global.GetYMLConfig()
 	if cfg == nil {
 		return fmt.Errorf("YMLConfig is nil, cannot sync")
 	}
@@ -55,10 +60,16 @@ func SyncConfigToDB() error {
 		return fmt.Errorf("sync targets failed: %w", err)
 	}
 
-	// Step 4: 同步 Devices（含刪除已移除記錄）
+	// Step 4: 同步 Devices（只做 upsert）
 	if err := syncDevices(tx, cfg); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("sync devices failed: %w", err)
+	}
+
+	// Step 4.5: 套用 disabled_devices，disabled 優先於 devices
+	if err := syncDisabledDevices(tx, cfg); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("sync disabled devices failed: %w", err)
 	}
 
 	// Step 5: ES Connections 刪除（在 Indices 清理完成後才安全執行）
@@ -72,6 +83,48 @@ func SyncConfigToDB() error {
 	}
 
 	log.Println("Config sync completed successfully")
+	return nil
+}
+
+// SyncDevicesConfigToDB 只同步 devices.yml 相關內容（devices / disabled_devices）
+// 用於 yml 模式下的 devices.yml hot reload，不影響 targets / indices / ES connections
+func SyncDevicesConfigToDB(cfg *structs.YMLConfig) error {
+	if cfg == nil {
+		return fmt.Errorf("YMLConfig is nil, cannot sync devices")
+	}
+
+	tx := global.Mysql.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Panic during devices sync, rolled back: %v", r)
+		}
+	}()
+
+	if err := syncDeviceGroups(tx, cfg); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("sync device groups failed: %w", err)
+	}
+
+	if err := syncDevices(tx, cfg); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("sync devices failed: %w", err)
+	}
+
+	if err := syncDisabledDevices(tx, cfg); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("sync disabled devices failed: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit devices sync: %w", err)
+	}
+
+	log.Println("Devices config sync completed successfully")
 	return nil
 }
 
@@ -405,8 +458,9 @@ func syncIndicesForTarget(tx *gorm.DB, target *entities.Target, ymlIndices []str
 }
 
 // syncDevices 同步裝置資料（以 device_group + name 為識別鍵）
-// 策略：全量覆蓋 — YML 有的 upsert，同群組 DB 有但 YML 沒有的刪除
-// 注意：只處理 YML 中有定義的 device_group；未出現的群組不受影響（保留自動發現的裝置）
+// 策略：只做 upsert，不刪除未出現在 YML 的設備
+// 原因：群組內可能存在大量由 auto-discovery 自動寫入的設備，不適合因 reload 而被整批刪除
+// 若要明確停用設備，應透過 disabled_devices 處理
 func syncDevices(tx *gorm.DB, cfg *structs.YMLConfig) error {
 	if len(cfg.Devices) == 0 {
 		log.Println("No devices in config.yml, skipping")
@@ -414,31 +468,16 @@ func syncDevices(tx *gorm.DB, cfg *structs.YMLConfig) error {
 	}
 
 	for _, ymlGroup := range cfg.Devices {
-		// 建立此群組在 YML 中的 name 集合
-		ymlNames := make(map[string]bool, len(ymlGroup.Names))
-		for _, item := range ymlGroup.Names {
-			ymlNames[item.Name] = true
-		}
-
-		// 載入 DB 中此群組的所有現有 devices
-		var existingDevices []entities.Device
-		if err := tx.Where("device_group = ?", ymlGroup.DeviceGroup).Find(&existingDevices).Error; err != nil {
-			return fmt.Errorf("load existing devices for group '%s' failed: %w", ymlGroup.DeviceGroup, err)
-		}
-
-		// 刪除 DB 有但 YML 中已移除的 devices
-		for _, dev := range existingDevices {
-			if ymlNames[dev.Name] {
-				continue
-			}
-			if err := tx.Delete(&dev).Error; err != nil {
-				return fmt.Errorf("delete device '%s/%s' failed: %w", ymlGroup.DeviceGroup, dev.Name, err)
-			}
-			log.Printf("Deleted device: %s/%s (not in YML)", ymlGroup.DeviceGroup, dev.Name)
+		if ymlGroup.DeviceGroup == "" {
+			continue
 		}
 
 		// Upsert：新增或更新 YML 中定義的 devices
 		for _, item := range ymlGroup.Names {
+			if item.Name == "" {
+				continue
+			}
+
 			var existing entities.Device
 			result := tx.Where("device_group = ? AND name = ?", ymlGroup.DeviceGroup, item.Name).First(&existing)
 
@@ -459,6 +498,37 @@ func syncDevices(tx *gorm.DB, cfg *structs.YMLConfig) error {
 				}
 			} else {
 				return fmt.Errorf("query device '%s/%s' failed: %w", ymlGroup.DeviceGroup, item.Name, result.Error)
+			}
+		}
+	}
+
+	return nil
+}
+
+// syncDisabledDevices 套用 disabled_devices 清單
+// disabled_devices 優先級高於 devices：命中的設備會從 DB 移除，且後續偵測也不可自動補回
+func syncDisabledDevices(tx *gorm.DB, cfg *structs.YMLConfig) error {
+	if len(cfg.DisabledDevices) == 0 {
+		log.Println("No disabled devices in devices.yml, skipping")
+		return nil
+	}
+
+	for _, group := range cfg.DisabledDevices {
+		if group.DeviceGroup == "" {
+			continue
+		}
+
+		for _, item := range group.Devices {
+			if item.Name == "" {
+				continue
+			}
+
+			result := tx.Where("device_group = ? AND name = ?", group.DeviceGroup, item.Name).Delete(&entities.Device{})
+			if result.Error != nil {
+				return fmt.Errorf("delete disabled device '%s/%s' failed: %w", group.DeviceGroup, item.Name, result.Error)
+			}
+			if result.RowsAffected > 0 {
+				log.Printf("Disabled device removed from DB: %s/%s", group.DeviceGroup, item.Name)
 			}
 		}
 	}

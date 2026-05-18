@@ -2,8 +2,9 @@ package structs
 
 type EnviromentModel struct {
 	Database     database
-	Timescale    timescale    // TimescaleDB 配置
-	BatchWriter  batchWriter  // 批量寫入配置
+	Timescale    timescale   // TimescaleDB 配置
+	BatchWriter  batchWriter // 批量寫入配置
+	YMLReload    ymlReload   // YML hot reload 配置
 	Server       server
 	ES           es
 	LIST         list
@@ -33,14 +34,14 @@ type sso struct {
 }
 
 type email struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	Sender   string
-	Auth     bool
-	SMTP     []string
-	AuthType string
+	User       string
+	Password   string
+	Host       string
+	Port       string
+	Sender     string
+	Auth       bool
+	SMTP       []string
+	AuthType   string
 	DisableTLS bool
 }
 
@@ -94,4 +95,9 @@ type batchWriter struct {
 	Enabled       bool   `mapstructure:"enabled"`
 	BatchSize     int    `mapstructure:"batch_size"`
 	FlushInterval string `mapstructure:"flush_interval"`
+}
+
+type ymlReload struct {
+	DevicesEnabled  bool   `mapstructure:"devices_enabled"`
+	DevicesInterval string `mapstructure:"devices_interval"`
 }

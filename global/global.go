@@ -6,6 +6,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 	"log-detect/structs"
+	"sync"
 )
 
 var (
@@ -19,7 +20,20 @@ var (
 	// TimescaleDB 相關
 	TimescaleDB *sql.DB         // TimescaleDB 原生連接
 	BatchWriter BatchWriterType // 批量寫入服務
+	ConfigMu    sync.RWMutex
 )
+
+func GetYMLConfig() *structs.YMLConfig {
+	ConfigMu.RLock()
+	defer ConfigMu.RUnlock()
+	return YMLConfig
+}
+
+func SetYMLConfig(cfg *structs.YMLConfig) {
+	ConfigMu.Lock()
+	defer ConfigMu.Unlock()
+	YMLConfig = cfg
+}
 
 // BatchWriterType 將在 services/batch_writer.go 中定義
 type BatchWriterType interface {

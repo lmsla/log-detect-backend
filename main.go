@@ -71,11 +71,12 @@ func main() {
 
 	// === YML-to-DB 同步 ===
 	if global.EnvConfig.ConfigSource == "yml" {
-		fmt.Println("Config source is YML, syncing config.yml to database...")
+		fmt.Println("Config source is YML, syncing config.yml/devices.yml to database...")
 		if err := services.SyncConfigToDB(); err != nil {
 			log.Fatalf("Failed to sync config to DB: %v", err)
 		}
 		fmt.Println("Config sync completed")
+		services.StartDevicesYMLReload()
 	}
 
 	// Initialize ES client after tables are created

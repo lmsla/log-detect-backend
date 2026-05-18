@@ -8,7 +8,6 @@ import (
 	"log-detect/log"
 	"log-detect/models"
 	"time"
-
 	// "github.com/elastic/go-elasticsearch/v8"
 )
 
@@ -47,9 +46,16 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	// fmt.Println("資料搜尋結果:",result)
 
 	for i := range result.Aggregations.Num2.Buckets {
+		deviceName := result.Aggregations.Num2.Buckets[i].Key
+		if IsDeviceDisabled(device_group, deviceName) {
+			log.Logrecord_no_rotate("INFO", fmt.Sprintf(
+				"Disabled device skipped from ES result: group='%s', device='%s'",
+				device_group, deviceName))
+			continue
+		}
 		// fmt.Println("host", result.Aggregations.Num2.Buckets[i].Key)
 		// fmt.Println("doc_count", result.Aggregations.Num2.Buckets[i].DocCount)
-		result_list = append(result_list, result.Aggregations.Num2.Buckets[i].Key)
+		result_list = append(result_list, deviceName)
 	}
 
 	fmt.Println("執行時間:", timenow)
@@ -67,6 +73,9 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	// 只要同群組中不存在，就允許建立；同名設備可存在於不同群組
 	if len(deviceslist) == 0 {
 		for _, device := range result_list {
+			if IsDeviceDisabled(device_group, device) {
+				continue
+			}
 			var existCount int64
 			if err := global.Mysql.Model(&entities.Device{}).
 				Where("device_group = ? AND name = ?", device_group, device).
@@ -97,6 +106,12 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	} else {
 		// db 中的 device list
 		for _, device := range deviceslist {
+			if IsDeviceDisabled(device_group, device.Name) {
+				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
+					"Disabled device skipped from DB device list: group='%s', device='%s'",
+					device_group, device.Name))
+				continue
+			}
 			device_list = append(device_list, device.Name)
 		}
 	}
@@ -109,6 +124,12 @@ func Detect(execute_time time.Time, indexID int, index string, field string, per
 	// 只檢查同一個 device_group 是否已存在，允許同名設備出現在不同群組
 	if len(added) != 0 {
 		for _, device := range added {
+			if IsDeviceDisabled(device_group, device) {
+				log.Logrecord_no_rotate("INFO", fmt.Sprintf(
+					"Auto-discovery skipped: device '%s' is disabled in group '%s'",
+					device, device_group))
+				continue
+			}
 			var existCount int64
 			if err := global.Mysql.Model(&entities.Device{}).
 				Where("device_group = ? AND name = ?", device_group, device).
@@ -337,10 +358,11 @@ func filterHAGroups(deviceGroup string, removed []string, online []string) (trul
 // 用於自動發現裝置時，讓新建的 Device 記錄帶上正確的 ha_group，而非永遠空白
 // 若 YMLConfig 未載入或找不到對應裝置，回傳空字串（獨立裝置行為）
 func lookupHAGroupFromYML(deviceGroup, deviceName string) string {
-	if global.YMLConfig == nil {
+	cfg := global.GetYMLConfig()
+	if cfg == nil {
 		return ""
 	}
-	for _, group := range global.YMLConfig.Devices {
+	for _, group := range cfg.Devices {
 		if group.DeviceGroup != deviceGroup {
 			continue
 		}

@@ -26,7 +26,7 @@ targets:
     enable: true
     indices:
       - logname: "firewall" # 對應 history / detect API 的識別名稱
-        index: "logstash-forti-group" # ES 索引名稱（支援萬用字元，如 logstash-forti-*）
+        index: "logstash-forti-group*" # ES 索引名稱（多個 indices 或後綴有日期必須使用萬用字元，如 logstash-forti-group*）
         device_group: "firewall" # 對應 devices.yml 的 device_group
         field: "host.keyword" # ES 聚合用欄位
         period: "minutes" # 偵測週期單位：minutes / hours
