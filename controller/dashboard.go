@@ -21,6 +21,10 @@ import (
 // @Security ApiKeyAuth
 // @Router /dashboard/overview [get]
 func GetDashboardOverview(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	res := services.GetDashboardData()
 
 	if !res.Success {
@@ -44,6 +48,10 @@ func GetDashboardOverview(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /dashboard/statistics [get]
 func GetHistoryStatistics(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	logname := c.Query("logname")
 	deviceGroup := c.Query("device_group")
 	startDate := c.Query("start_date")
@@ -72,6 +80,10 @@ func GetHistoryStatistics(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /dashboard/devices/{device_name}/timeline [get]
 func GetDeviceTimeline(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	deviceName := c.Param("device_name")
 	logname := c.Query("logname")
 
@@ -108,6 +120,10 @@ func GetDeviceTimeline(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /dashboard/trends [get]
 func GetTrendData(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	logname := c.Query("logname")
 	deviceGroup := c.Query("device_group")
 
@@ -138,6 +154,10 @@ func GetTrendData(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /dashboard/groups/statistics [get]
 func GetGroupStatistics(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	logname := c.Query("logname")
 
 	if logname == "" {
@@ -166,6 +186,10 @@ func GetGroupStatistics(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /dashboard/devices/status [get]
 func GetDeviceStatusOverview(c *gin.Context) {
+	if !requireTimescale(c, "dashboard") {
+		return
+	}
+
 	logname := c.Query("logname")
 
 	// 使用現有的 DataDealing 函數來獲取設備狀態（dashboard 固定取全天資料）
@@ -307,4 +331,3 @@ func UpdateAlertStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Alert status updated successfully"})
 }
-

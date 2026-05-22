@@ -47,7 +47,12 @@ func runMySQLMigrations() error {
 // runTimescaleDBMigrations 執行 TimescaleDB migrations
 func runTimescaleDBMigrations() error {
 	if global.TimescaleDB == nil {
-		log.Println("TimescaleDB not configured, skipping migrations")
+		status := global.GetRuntimeStatus().TimescaleDB
+		if status.Configured && !status.Connected {
+			log.Printf("TimescaleDB unavailable, skipping migrations: %s", status.Error)
+		} else {
+			log.Println("TimescaleDB feature disabled, skipping TimescaleDB migrations")
+		}
 		return nil
 	}
 

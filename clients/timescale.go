@@ -28,6 +28,7 @@ func LoadTimescaleDB() error {
 
 	// 測試連接
 	if err := db.Ping(); err != nil {
+		_ = db.Close()
 		return fmt.Errorf("failed to ping TimescaleDB: %w", err)
 	}
 

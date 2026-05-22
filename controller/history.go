@@ -1,13 +1,12 @@
 package controller
 
 import (
+	"log-detect/services"
 	"net/http"
 	"strconv"
-	"log-detect/services"
 
 	"github.com/gin-gonic/gin"
 )
-
 
 // @Summary Get History Data
 // @Tags History
@@ -18,6 +17,9 @@ import (
 // @Success 200 {object} string
 // @Router /History/GetData/{logname} [GET]
 func GetHistoryData(c *gin.Context) {
+	if !requireTimescale(c, "history") {
+		return
+	}
 
 	logname := c.Param("logname")
 	if logname == "" {
@@ -41,15 +43,12 @@ func GetHistoryData(c *gin.Context) {
 	c.JSON(http.StatusOK, res.Body)
 }
 
-
-
 // @Summary Get History Data
 // @Tags History
 // @Accept  json
 // @Produce  json
 // @Success 200 {object} string
 // @Router /History/GetLognameData [GET]
-
 
 // @Summary Get Get Logname in History
 // @Tags History
@@ -58,6 +57,9 @@ func GetHistoryData(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /History/GetLognameData [get]
 func GetLognameData(c *gin.Context) {
+	if !requireTimescale(c, "history") {
+		return
+	}
 
 	res := services.GetLognameData()
 

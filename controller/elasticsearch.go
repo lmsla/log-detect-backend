@@ -170,6 +170,10 @@ func ToggleESMonitor(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/status [get]
 func GetAllESMonitorsStatus(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	queryService := services.NewESMonitorQueryService()
 	statuses, err := queryService.GetAllMonitorsStatus()
 
@@ -195,6 +199,10 @@ func GetAllESMonitorsStatus(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/statistics [get]
 func GetESStatistics(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	queryService := services.NewESMonitorQueryService()
 	stats, err := queryService.GetESStatistics()
 
@@ -223,6 +231,10 @@ func GetESStatistics(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/status/{id}/history [get]
 func GetESMonitorHistory(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
@@ -293,6 +305,10 @@ func GetESMonitorHistory(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/alerts [get]
 func GetESAlerts(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	var params models.ESAlertQueryParams
 
 	// 解析查詢參數
@@ -356,6 +372,10 @@ func GetESAlerts(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/alerts/{monitor_id} [get]
 func GetESAlertByID(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	monitorID, err := strconv.Atoi(c.Param("monitor_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid monitor ID"})
@@ -401,6 +421,10 @@ func GetESAlertByID(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/alerts/{monitor_id}/resolve [post]
 func ResolveESAlert(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	monitorID, err := strconv.Atoi(c.Param("monitor_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid monitor ID"})
@@ -460,6 +484,10 @@ func ResolveESAlert(c *gin.Context) {
 // @Success 200 {object} models.Response
 // @Router /api/v1/elasticsearch/alerts/{monitor_id}/acknowledge [put]
 func AcknowledgeESAlert(c *gin.Context) {
+	if !requireTimescale(c, "es_monitoring") {
+		return
+	}
+
 	monitorID, err := strconv.Atoi(c.Param("monitor_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid monitor ID"})

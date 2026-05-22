@@ -205,6 +205,7 @@ func LoadRouter() *gin.Engine {
 	}
 
 	// Environment routes (may need different permissions)
+	apiv1.GET("/system/status", controller.GetSystemStatus)
 	apiv1.GET("/get-sso-url", controller.GetSSOURL)
 	apiv1.GET("/user/get-server-menu", controller.GetServerMenu)
 	apiv1.GET("/get-server-module", controller.GetServerModule)

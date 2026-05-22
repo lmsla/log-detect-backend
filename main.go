@@ -8,6 +8,7 @@ import (
 
 	"log-detect/clients"
 	"log-detect/global"
+	appLog "log-detect/log"
 	"log-detect/router"
 	"log-detect/services"
 	"log-detect/utils"
@@ -32,32 +33,101 @@ func main() {
 
 	utils.LoadEnvironment()
 
+	global.SetMySQLRuntimeStatus(global.MySQLRuntimeStatus{
+		Configured: true,
+		Connected:  false,
+		Host:       global.EnvConfig.Database.Host,
+		Port:       global.EnvConfig.Database.Port,
+		Database:   global.EnvConfig.Database.Db,
+	})
+
+	global.SetTimescaleRuntimeStatus(global.TimescaleRuntimeStatus{
+		Configured:       global.EnvConfig.Features.TimescaleDB,
+		Connected:        false,
+		Host:             global.EnvConfig.Timescale.Host,
+		Port:             global.EnvConfig.Timescale.Port,
+		Error:            "",
+		DegradedFeatures: services.TimescaleDependentFeatures(),
+		LastCheckAt:      time.Now().Format(time.RFC3339),
+	})
+
+	global.SetESMonitoringRuntimeStatus(global.ESMonitoringRuntimeStatus{
+		Enabled:          global.EnvConfig.Features.ESMonitoring,
+		SchedulerStarted: false,
+		Reason:           "not initialized",
+	})
+
 	clients.LoadDatabase()
+	global.SetMySQLRuntimeStatus(global.MySQLRuntimeStatus{
+		Configured: true,
+		Connected:  true,
+		Host:       global.EnvConfig.Database.Host,
+		Port:       global.EnvConfig.Database.Port,
+		Database:   global.EnvConfig.Database.Db,
+	})
+
 	mysql, _ := global.Mysql.DB()
 	defer mysql.Close()
 
 	// === Feature Toggle: TimescaleDB ===
 	if global.EnvConfig.Features.TimescaleDB {
 		if err := clients.LoadTimescaleDB(); err != nil {
-			log.Fatalf("Failed to initialize TimescaleDB: %v", err)
-		}
-		defer global.TimescaleDB.Close()
+			global.SetTimescaleRuntimeStatus(global.TimescaleRuntimeStatus{
+				Configured:       true,
+				Connected:        false,
+				Host:             global.EnvConfig.Timescale.Host,
+				Port:             global.EnvConfig.Timescale.Port,
+				Error:            err.Error(),
+				DegradedFeatures: services.TimescaleDependentFeatures(),
+				LastCheckAt:      time.Now().Format(time.RFC3339),
+			})
 
-		// 批量寫入服務（依賴 TimescaleDB）
-		if global.EnvConfig.BatchWriter.Enabled {
-			flushInterval, err := time.ParseDuration(global.EnvConfig.BatchWriter.FlushInterval)
-			if err != nil {
-				flushInterval = 30 * time.Second
-			}
-			global.BatchWriter = services.NewBatchWriter(
-				global.TimescaleDB,
-				global.EnvConfig.BatchWriter.BatchSize,
-				flushInterval,
+			msg := fmt.Sprintf(
+				"TimescaleDB connection failed; host=%s port=%s configured=true connected=false reason=%q degraded_features=%v",
+				global.EnvConfig.Timescale.Host,
+				global.EnvConfig.Timescale.Port,
+				err.Error(),
+				services.TimescaleDependentFeatures(),
 			)
-			defer global.BatchWriter.Stop()
-			log.Println("BatchWriter initialized successfully")
+			log.Printf("ERROR: %s", msg)
+			appLog.Logrecord_no_rotate("ERROR", msg)
+		} else {
+			global.SetTimescaleRuntimeStatus(global.TimescaleRuntimeStatus{
+				Configured:       true,
+				Connected:        true,
+				Host:             global.EnvConfig.Timescale.Host,
+				Port:             global.EnvConfig.Timescale.Port,
+				Error:            "",
+				DegradedFeatures: nil,
+				LastCheckAt:      time.Now().Format(time.RFC3339),
+			})
+			defer global.TimescaleDB.Close()
+
+			// 批量寫入服務（依賴 TimescaleDB）
+			if global.EnvConfig.BatchWriter.Enabled {
+				flushInterval, err := time.ParseDuration(global.EnvConfig.BatchWriter.FlushInterval)
+				if err != nil {
+					flushInterval = 30 * time.Second
+				}
+				global.BatchWriter = services.NewBatchWriter(
+					global.TimescaleDB,
+					global.EnvConfig.BatchWriter.BatchSize,
+					flushInterval,
+				)
+				defer global.BatchWriter.Stop()
+				log.Println("BatchWriter initialized successfully")
+			}
 		}
 	} else {
+		global.SetTimescaleRuntimeStatus(global.TimescaleRuntimeStatus{
+			Configured:       false,
+			Connected:        false,
+			Host:             global.EnvConfig.Timescale.Host,
+			Port:             global.EnvConfig.Timescale.Port,
+			Error:            "feature disabled in setting.yml",
+			DegradedFeatures: services.TimescaleDependentFeatures(),
+			LastCheckAt:      time.Now().Format(time.RFC3339),
+		})
 		fmt.Println("TimescaleDB feature disabled, skipping initialization")
 	}
 
@@ -99,11 +169,38 @@ func main() {
 
 	// === Feature Toggle: ES Monitoring ===
 	if global.EnvConfig.Features.ESMonitoring {
-		services.InitESScheduler()
-		if err := services.GlobalESScheduler.LoadAllMonitors(); err != nil {
-			log.Printf("Failed to load ES monitors: %v", err)
+		if services.IsTimescaleReady() {
+			services.InitESScheduler()
+			if err := services.GlobalESScheduler.LoadAllMonitors(); err != nil {
+				log.Printf("Failed to load ES monitors: %v", err)
+				global.SetESMonitoringRuntimeStatus(global.ESMonitoringRuntimeStatus{
+					Enabled:          true,
+					SchedulerStarted: false,
+					Reason:           fmt.Sprintf("failed to load monitors: %v", err),
+				})
+			} else {
+				global.SetESMonitoringRuntimeStatus(global.ESMonitoringRuntimeStatus{
+					Enabled:          true,
+					SchedulerStarted: true,
+					Reason:           "",
+				})
+			}
+		} else {
+			msg := fmt.Sprintf("ES Monitoring scheduler not started because TimescaleDB is unavailable: %s", services.TimescaleUnavailableMessage())
+			log.Printf("ERROR: %s", msg)
+			appLog.Logrecord_no_rotate("ERROR", msg)
+			global.SetESMonitoringRuntimeStatus(global.ESMonitoringRuntimeStatus{
+				Enabled:          true,
+				SchedulerStarted: false,
+				Reason:           services.TimescaleUnavailableMessage(),
+			})
 		}
 	} else {
+		global.SetESMonitoringRuntimeStatus(global.ESMonitoringRuntimeStatus{
+			Enabled:          false,
+			SchedulerStarted: false,
+			Reason:           "feature disabled in setting.yml",
+		})
 		fmt.Println("ES Monitoring feature disabled, skipping scheduler initialization")
 	}
 
