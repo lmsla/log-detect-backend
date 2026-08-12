@@ -1,0 +1,225 @@
+name: CI Smoke
+
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch, tag, or SHA to verify
+        required: true
+        default: develop
+        type: string
+      publish_image:
+        description: Push the built image to registry.lab.local
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPO: registry.lab.local/log-detect-backend
+  GITOPS_REPO: lmsla/mahakala-gitops
+  GITOPS_BRANCH: main
+  GITOPS_DEPLOY_PATH: environments/lab/apps/log-detect-backend/base/deploy.yaml
+
+jobs:
+  verify:
+    name: Verify Go source
+    runs-on: [self-hosted, lab, docker]
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.ref }}
+
+      - name: Setup Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Resolve source commit
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Go build
+        run: go build ./...
+
+  image:
+    name: Build and optionally publish image
+    needs: verify
+    runs-on: [self-hosted, lab, docker]
+    timeout-minutes: 30
+    outputs:
+      is_release: ${{ steps.meta.outputs.is_release }}
+      published: ${{ steps.meta.outputs.should_publish }}
+      sha_tag: ${{ steps.meta.outputs.sha_tag }}
+      version_tag: ${{ steps.meta.outputs.version_tag }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.source_sha }}
+
+      - name: Compute image metadata
+        id: meta
+        shell: bash
+        env:
+          MANUAL_PUBLISH: ${{ inputs.publish_image }}
+        run: |
+          set -euo pipefail
+
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          SHORT_SHA="${SOURCE_SHA:0:7}"
+          SHA_TAG="sha-${SHORT_SHA}"
+          VERSION_TAG=""
+          IS_RELEASE="false"
+          SHOULD_PUBLISH="false"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" || "${MANUAL_PUBLISH}" == "true" ]]; then
+            SHOULD_PUBLISH="true"
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION_TAG="${GITHUB_REF#refs/tags/}"
+            IS_RELEASE="true"
+          fi
+
+          {
+            echo "source_sha=${SOURCE_SHA}"
+            echo "sha_tag=${SHA_TAG}"
+            echo "version_tag=${VERSION_TAG}"
+            echo "is_release=${IS_RELEASE}"
+            echo "should_publish=${SHOULD_PUBLISH}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Docker build
+        shell: bash
+        env:
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          VERSION_TAG: ${{ steps.meta.outputs.version_tag }}
+        run: |
+          set -euo pipefail
+
+          docker build --tag "${IMAGE_REPO}:${SHA_TAG}" .
+
+          if [[ -n "${VERSION_TAG}" ]]; then
+            docker tag "${IMAGE_REPO}:${SHA_TAG}" "${IMAGE_REPO}:${VERSION_TAG}"
+          fi
+
+      - name: Push image to internal registry
+        if: steps.meta.outputs.should_publish == 'true'
+        shell: bash
+        env:
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          VERSION_TAG: ${{ steps.meta.outputs.version_tag }}
+        run: |
+          set -euo pipefail
+
+          docker push "${IMAGE_REPO}:${SHA_TAG}"
+
+          if [[ -n "${VERSION_TAG}" ]]; then
+            docker push "${IMAGE_REPO}:${VERSION_TAG}"
+          fi
+
+      - name: Clean local CI images
+        if: ${{ always() && steps.meta.outputs.sha_tag != '' }}
+        shell: bash
+        env:
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          VERSION_TAG: ${{ steps.meta.outputs.version_tag }}
+        run: |
+          docker image rm "${IMAGE_REPO}:${SHA_TAG}" || true
+
+          if [[ -n "${VERSION_TAG}" ]]; then
+            docker image rm "${IMAGE_REPO}:${VERSION_TAG}" || true
+          fi
+
+          docker builder prune --force --filter "until=168h" || true
+
+  deploy:
+    name: Update GitOps release
+    needs: image
+    if: needs.image.outputs.is_release == 'true' && needs.image.outputs.published == 'true'
+    runs-on: [self-hosted, lab, docker]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          ref: ${{ env.GITOPS_BRANCH }}
+          path: gitops
+          token: ${{ secrets.GITOPS_PAT }}
+
+      - name: Update image tag in GitOps manifest
+        working-directory: gitops
+        shell: bash
+        env:
+          VERSION_TAG: ${{ needs.image.outputs.version_tag }}
+        run: |
+          set -euo pipefail
+
+          FILE="${GITOPS_DEPLOY_PATH}"
+          IMG="${IMAGE_REPO}:${VERSION_TAG}"
+          ESCAPED_IMAGE_REPO="${IMAGE_REPO//./\\.}"
+
+          if [[ ! -f "${FILE}" ]]; then
+            echo "ERROR: GitOps deploy file not found: ${FILE}" >&2
+            exit 1
+          fi
+
+          if ! grep -Fq "image: ${IMAGE_REPO}:" "${FILE}"; then
+            echo "ERROR: Existing image reference not found in ${FILE}" >&2
+            exit 1
+          fi
+
+          sed -i -E "s#^([[:space:]]*image:[[:space:]]*)${ESCAPED_IMAGE_REPO}:[^[:space:]]+#\\1${IMG}#" "${FILE}"
+
+          if ! grep -Fq "image: ${IMG}" "${FILE}"; then
+            echo "ERROR: Image reference was not updated in ${FILE}" >&2
+            exit 1
+          fi
+
+          grep -nF "image: ${IMG}" "${FILE}"
+          git diff --check
+
+      - name: Commit and push GitOps change
+        working-directory: gitops
+        shell: bash
+        env:
+          VERSION_TAG: ${{ needs.image.outputs.version_tag }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add "${GITOPS_DEPLOY_PATH}"
+
+          if git diff --cached --quiet; then
+            echo "No GitOps changes to commit."
+            exit 0
+          fi
+
+          git commit -m "release: pin log-detect-backend image to ${VERSION_TAG}"
+          git push origin "${GITOPS_BRANCH}"
