@@ -120,7 +120,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          docker build --tag "${IMAGE_REPO}:${SHA_TAG}" .
+          for BUILD_ATTEMPT in 1 2 3; do
+            echo "Docker build attempt ${BUILD_ATTEMPT}/3"
+
+            if docker build --tag "${IMAGE_REPO}:${SHA_TAG}" .; then
+              break
+            fi
+
+            if [[ "${BUILD_ATTEMPT}" -eq 3 ]]; then
+              echo "ERROR: Docker build failed after 3 attempts." >&2
+              exit 1
+            fi
+
+            RETRY_DELAY=$((BUILD_ATTEMPT * 10))
+            echo "Docker build failed; retrying in ${RETRY_DELAY} seconds..." >&2
+            sleep "${RETRY_DELAY}"
+          done
 
           if [[ -n "${VERSION_TAG}" ]]; then
             docker tag "${IMAGE_REPO}:${SHA_TAG}" "${IMAGE_REPO}:${VERSION_TAG}"
